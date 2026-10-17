@@ -181,7 +181,8 @@
     const ok = pick === q.ans, qi = PP.LEVELS.indexOf(q.lv);
     const before = PP.LEVELS.filter(l => PP.passed(q.sec, l));
     // a right answer counts for its own level and for every easier level too
-    if (ok) PP.LEVELS.forEach((l, i) => { if (i <= qi) PP.S(q.sec)[l].c++; }); else PP.S(q.sec)[q.lv].w++;
+    // smart practice never moves level counters: levels are passed in regular section practice only
+    if (!smart) { if (ok) PP.LEVELS.forEach((l, i) => { if (i <= qi) PP.S(q.sec)[l].c++; }); else PP.S(q.sec)[q.lv].w++; }
     D.ask[q.sec] = Math.max(0, Math.min(2, qi + (ok ? 1 : -1)));
     const newly = PP.LEVELS.filter(l => PP.passed(q.sec, l) && !before.includes(l));
     PP.record(q, ok, secs, 'p', pick);

@@ -140,7 +140,9 @@
       top = '🎯 Focus · ' + secName(q.sec) + ' · ' + lvName(q.lv); prog = n.got / PP.FOCUS_NEED * 100; txt = n.got + ' of ' + PP.FOCUS_NEED + ' correct in this puzzle type'; back = 'home';
     } else {
       const bl = PP.curLevel(q.sec), st = PP.S(q.sec)[bl];
-      top = (P.smart ? '⚡ ' : '') + secIcon(q.sec) + ' ' + secName(q.sec) + ' · ' + lvName(q.lv); prog = st.c / PP.NEED * 100; txt = Math.min(st.c, PP.NEED) + ' of ' + PP.NEED + ' correct to pass ' + LN[bl] + (PP.passed(q.sec, bl) ? ' (all levels passed)' : ''); back = P.smart ? 'home' : 'sec';
+      top = (P.smart ? '⚡ ' : '') + secIcon(q.sec) + ' ' + secName(q.sec) + ' · ' + lvName(q.lv); back = P.smart ? 'home' : 'sec';
+      if (P.smart) { prog = Math.min(d.sess.n, PP.SESSION) / PP.SESSION * 100; txt = 'Smart session: question ' + Math.min(d.sess.n + 1, PP.SESSION) + ' of ' + PP.SESSION + ' (' + d.sess.ok + ' right so far)'; }
+      else { prog = st.c / PP.NEED * 100; txt = Math.min(st.c, PP.NEED) + ' of ' + PP.NEED + ' correct to pass ' + LN[bl] + (PP.passed(q.sec, bl) ? ' (all levels passed)' : ''); }
     }
     const sess = (P.fromMiss || !P.smart ? '' : '<small class="mute">🏒 ' + Math.min(d.sess.n, PP.SESSION) + ' of ' + PP.SESSION + ' questions to a cartoon character (get 8 right)</small>');
     const harder = (P.mode === 'practice' && !P.isTwin && !P.fromMiss && PP.LEVELS.indexOf(q.lv) > PP.LEVELS.indexOf(PP.curLevel(q.sec))) ? '<div class="note">⬆️ Harder question! You got the last one right, so you moved up.</div>' : '';
