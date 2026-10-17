@@ -12,7 +12,7 @@
 
   const freshTeam = name => ({ name, slots: { LW: null, C: null, RW: null, D1: null, D2: null, G: null } });
   const fresh = () => ({ v: 3, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
-    miss: {}, sess: { n: 0, ok: 0 }, fan: { picks: [], offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
+    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, fan: { picks: [], offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
@@ -26,6 +26,7 @@
     }
   } catch (e) {}
   if (D.cur) D.cur.subs.forEach(s => { s.end = 0; });
+  if (!D.ask) D.ask = {};
   PP.D = () => D;
   PP.save = () => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) {} };
   PP.reset = () => { D = fresh(); PP.save(); };
@@ -135,15 +136,24 @@
 
   /* ---------- practice ---------- */
   PP.nextQ = (code, lv, opts) => PP.pickQ(code, lv, opts);
+  /* staircase: a right answer moves the next question of this puzzle type one level harder,
+     a wrong answer moves it one level easier (never below the level still being passed) */
+  PP.askLevel = function (code) {
+    const base = PP.LEVELS.indexOf(PP.curLevel(code)), a = D.ask[code];
+    return PP.LEVELS[Math.max(base, a === undefined ? base : a)];
+  };
   PP.answerPractice = function (q, pick, secs) {
-    const ok = pick === q.ans, st = PP.S(q.sec)[q.lv];
-    const before = st.c >= NEED;
-    if (ok) st.c++; else st.w++;
+    const ok = pick === q.ans, qi = PP.LEVELS.indexOf(q.lv);
+    const before = PP.LEVELS.filter(l => PP.passed(q.sec, l));
+    // a right answer counts for its own level and for every easier level too
+    if (ok) PP.LEVELS.forEach((l, i) => { if (i <= qi) PP.S(q.sec)[l].c++; }); else PP.S(q.sec)[q.lv].w++;
+    D.ask[q.sec] = Math.max(0, Math.min(2, qi + (ok ? 1 : -1)));
+    const newly = PP.LEVELS.filter(l => PP.passed(q.sec, l) && !before.includes(l));
     PP.record(q, ok, secs, 'p', pick);
     PP.addTime(Math.min(secs || 0, 120));
     const sessionDone = PP.sessionAdd(ok);
     PP.save();
-    return { ok, levelPassed: !before && st.c >= NEED, sessionDone };
+    return { ok, levelPassed: newly.length > 0, passedLv: newly[newly.length - 1], sessionDone };
   };
 
   /* ---------- focus practice ---------- */

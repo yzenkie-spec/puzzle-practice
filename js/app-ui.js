@@ -112,7 +112,7 @@
   function smart() { P = { mode: 'practice', code: null, smart: true, twin: null }; nextPractice(); }
   function nextPractice() {
     if (P.smart && !P.twin) P.code = PP.smartSection(P.code);
-    P.lv = P.fixLv || PP.curLevel(P.code);
+    P.lv = P.fixLv || (P.twin && P.twinLv) || PP.askLevel(P.code);
     const r = PP.nextQ(P.code, P.lv, { tag: P.twin });
     P.isTwin = !!P.twin; P.twin = null;
     P.q = r.q; P.repeat = r.repeat; P.done = false; P.t0 = Date.now(); qView();
@@ -139,11 +139,12 @@
       const n = d.focus.needs[q.sec];
       top = '🎯 Focus · ' + secName(q.sec) + ' · ' + lvName(q.lv); prog = n.got / PP.FOCUS_NEED * 100; txt = n.got + ' of ' + PP.FOCUS_NEED + ' correct in this puzzle type'; back = 'home';
     } else {
-      const st = PP.S(q.sec)[q.lv];
-      top = (P.smart ? '⚡ ' : '') + secIcon(q.sec) + ' ' + secName(q.sec) + ' · ' + lvName(q.lv); prog = st.c / PP.NEED * 100; txt = Math.min(st.c, PP.NEED) + ' of ' + PP.NEED + ' correct to pass this level'; back = P.smart ? 'home' : 'sec';
+      const bl = PP.curLevel(q.sec), st = PP.S(q.sec)[bl];
+      top = (P.smart ? '⚡ ' : '') + secIcon(q.sec) + ' ' + secName(q.sec) + ' · ' + lvName(q.lv); prog = st.c / PP.NEED * 100; txt = Math.min(st.c, PP.NEED) + ' of ' + PP.NEED + ' correct to pass ' + LN[bl] + (PP.passed(q.sec, bl) ? ' (all levels passed)' : ''); back = P.smart ? 'home' : 'sec';
     }
     const sess = (P.fromMiss ? '' : '<small class="mute">🏒 ' + Math.min(d.sess.n, PP.SESSION) + ' of ' + PP.SESSION + ' questions to your next draft pick</small>');
-    const note = sess + (P.isTwin ? '<div class="note">🔁 Same kind of puzzle as the last one. You can do it!</div>' : '') + (P.repeat ? '<div class="note">♻️ You have done all the fresh questions at this level, so this one is a repeat.</div>' : '');
+    const harder = (P.mode === 'practice' && !P.isTwin && !P.fromMiss && PP.LEVELS.indexOf(q.lv) > PP.LEVELS.indexOf(PP.curLevel(q.sec))) ? '<div class="note">⬆️ Harder question! You got the last one right, so you moved up.</div>' : '';
+    const note = sess + harder + (P.isTwin ? '<div class="note">🔁 Same kind of puzzle as the last one. You can do it!</div>' : '') + (P.repeat ? '<div class="note">♻️ You have done all the fresh questions at this level, so this one is a repeat.</div>' : '');
     set('<div class="top"><button class="ghost" data-a="' + back + '" data-v="' + q.sec + '">' + (back === 'home' ? 'Home' : 'Back') + '</button><span class="mute">' + top + '</span></div>' + bar(prog) + '<small class="mute">' + txt + '</small>' + note + qHTML(q, null, false) + '<div id="fb"></div>');
   }
   function pick(i) {
@@ -161,7 +162,8 @@
         if (res.allCleared) { btn = 'All done!'; act = 'focusDone'; }
         else if (res.cleared) { btn = 'Next puzzle type'; }
       }
-      if (!ok) P.twin = q.tag || null;
+      if (!ok) { P.twin = q.tag || null; P.twinLv = q.lv; }
+      if (res.levelPassed) P.passedLv = res.passedLv;
       let extra = '';
       if (P.fromMiss) {
         btn = ok ? 'I understand it now ✅' : 'Try another like it'; act = ok ? 'missUnderstood' : 'next';
@@ -176,7 +178,7 @@
   }
   function next() { if (P.mode === 'practice') nextPractice(); else nextFocus(); }
   function levelUp() {
-    const code = P.code, lv = P.lv, i = PP.LEVELS.indexOf(lv), nx = PP.LEVELS[i + 1];
+    const code = P.code, lv = P.passedLv || P.lv, i = PP.LEVELS.indexOf(lv), nx = PP.LEVELS[i + 1];
     confetti();
     set('<h1>Level passed! 🎉</h1><p class="sub">' + secName(code) + ' · ' + lvName(lv) + ' is done. ' + (nx ? lvName(nx) + ' is now open.' : 'You have passed every level in this puzzle type.') + '</p><div class="menu">' +
       (P.smart ? '<button class="go" data-a="smartGo">Keep going</button>' : (nx ? '<button class="go" data-a="practice" data-v="' + code + '">Start ' + lvName(nx) + '</button>' : '')) +
