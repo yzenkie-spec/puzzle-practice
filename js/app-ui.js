@@ -309,7 +309,7 @@
   /* ---------------- Tracker ---------------- */
   function tracker() {
     stop(); P = null;
-    const d = D(), tot = PP.totals(), td = PP.dayStats(PP.dkey());
+    const d = D(), tot = PP.totals(), td = PP.dayStats(PP.dkey()), mc = PP.missCounts();
     // last 7 days
     const days = [];
     for (let i = 6; i >= 0; i--) { const x = new Date(); x.setDate(x.getDate() - i); const k = PP.dkey(x); days.push({ k, lbl: x.toLocaleDateString(undefined, { weekday: 'short' }), st: PP.dayStats(k) }); }
@@ -330,6 +330,7 @@
       '<h2>Practice time, last 7 days</h2><div class="card"><div class="dchart">' + bars + '</div><small class="mute">Minutes per day. The goal is 20.</small><div class="scroll"><table class="tbl"><thead><tr><th>Day</th><th>Time</th><th>Questions</th><th>Right</th></tr></thead><tbody>' + drows + '</tbody></table></div></div>' +
       '<h2>Progress</h2><div class="card"><div class="lvh"><b>Levels passed</b><span>' + passedAll + ' of 27</span></div>' + bar(passedAll / 27 * 100) + '<div class="lvh"><b>Fresh questions used</b><span>' + tot.used + ' of ' + tot.bank + '</span></div>' + bar(tot.used / tot.bank * 100) + '<small class="mute">Questions never repeat until a level runs out.</small>' +
       (d.tests.length ? '<div class="dchart" style="margin-top:14px">' + trend + '</div><small class="mute">Mock test scores (percent right)</small>' : '') + '</div>' +
+      '<h2>🧠 Mistakes</h2><div class="card">' + (mc.all ? '<div class="lvh"><b>Understood</b><span>' + mc.done + ' of ' + mc.all + '</span></div>' + bar(mc.done / mc.all * 100) + '<small class="mute">' + mc.open + ' still not understood · ' + mc.all + ' missed in total</small><ul class="weak" style="margin-top:8px">' + PP.SECS.map(s => ({ s, n: PP.missList('open', s.code).length })).filter(x => x.n).map(x => '<li>' + x.s.icon + ' ' + x.s.name + ': <b>' + x.n + '</b> not understood yet</li>').join('') + '</ul>' : '<p>No mistakes saved yet.</p>') + '<button class="ghost wide" data-a="mistakes" style="margin-top:10px">Open the mistakes notebook</button></div>' +
       '<h2>By puzzle type</h2><div class="card scroll"><table class="tbl"><thead><tr><th>Puzzle type</th><th>Answered</th><th>Last 20</th><th>' + lvName('e') + '</th><th>' + lvName('a') + '</th><th>' + lvName('c') + '</th></tr></thead><tbody>' + srows + '</tbody></table></div>' +
       '<h2>Needs more practice</h2><div class="card">' + (weak ? '<ul class="weak">' + weak + '</ul><small class="mute">Smart practice and the next mock test give extra questions on these.</small>' : '<p>Nothing stands out yet. Keep practicing and this list will fill in.</p>') + '</div>' +
       '<button class="ghost" data-a="reset">' + (resetArm ? 'Tap again to erase everything' : 'Reset all progress') + '</button>');
