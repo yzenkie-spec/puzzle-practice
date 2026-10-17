@@ -88,7 +88,7 @@
         return '<button class="tile" data-a="sec" data-v="' + s.code + '"><b>' + s.icon + ' ' + s.name + '</b><span class="chips">' + chips + '</span></button>';
       }).join('') + '</div>';
     });
-    h += '<div class="row"><button class="ghost" data-a="review">📝 Review</button><button class="ghost" data-a="tracker">📊 Tracker</button></div>';
+    h += '<div class="row"><button class="ghost" data-a="review">📝 Review</button><button class="ghost" data-a="tracker">📊 Tracker</button></div><div class="row"><button class="ghost" data-a="backup">💾 Save / restore progress</button></div>';
     set(h);
   }
 

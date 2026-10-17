@@ -43,6 +43,26 @@
     (D.fan.hist || []).forEach(h => { D.fan.owned[h.id] = 1; if (h.old) D.fan.owned[h.old] = 1; });
   }
   PP.D = () => D;
+  /* ---------- backup code: the whole saved record as one text code ---------- */
+  const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); };
+  const unb64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+  const pipe = async (data, T) => new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new T('gzip'))).arrayBuffer());
+  PP.exportCode = async function () {
+    const raw = new TextEncoder().encode(JSON.stringify(D));
+    try { if (window.CompressionStream) return 'PP1:' + b64(await pipe(raw, CompressionStream)); } catch (e) {}
+    return 'PP0:' + b64(raw);
+  };
+  PP.parseCode = async function (txt) {
+    const t = String(txt || '').replace(/\s+/g, '');
+    let json;
+    if (t.startsWith('PP1:')) json = new TextDecoder().decode(await pipe(unb64(t.slice(4)), DecompressionStream));
+    else if (t.startsWith('PP0:')) json = new TextDecoder().decode(unb64(t.slice(4)));
+    else throw new Error('bad');
+    const r = JSON.parse(json);
+    if (!r || r.v !== 3 || !r.sec || !r.fan) throw new Error('bad');
+    return r;
+  };
+  PP.restoreData = function (r) { localStorage.setItem(KEY, JSON.stringify(r)); };
   PP.save = () => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) {} };
   PP.reset = () => { D = fresh(); PP.save(); };
 

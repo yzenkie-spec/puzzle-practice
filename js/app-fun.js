@@ -32,6 +32,53 @@
     const cells = codes.map(c => { const k = c + '|' + jv.lv; return o[k] ? '<div class="cc">' + jerseyCard({ team: c, lv: jv.lv, n: o[k] }, true) + '</div>' : '<div class="cc"><div class="pc locked mini"><b>???</b><span class="pos">' + PP.JTEAMS[c] + '</span></div></div>'; }).join('');
     set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">👕 Jerseys</span></div><h1>Jersey collection</h1><div class="card"><div class="lvh"><b>Collected</b><span>' + have + ' of ' + all + '</span></div>' + U.bar(have / all * 100) + '<small class="mute">Pass a level to win a jersey. Easy = Home, Average = Away, Challenging = Retro.</small></div>' + chips + '<div class="cgrid">' + cells + '</div>');
   }
+  /* ---------------- save / restore progress ---------------- */
+  let bk = { code: '', msg: '', ok: true };
+  async function backup() {
+    U.stop();
+    try { bk.code = await PP.exportCode(); } catch (e) { bk.code = ''; }
+    backupView();
+  }
+  function backupView() {
+    const ta = 'style="width:100%;box-sizing:border-box;height:110px;font:12px monospace;border-radius:12px;border:2px solid #cbd5e8;padding:8px"';
+    set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">💾 Backup</span></div><h1>Save my progress</h1>' +
+      '<div class="card"><b>1. Save</b><p class="sub">Keep this code or file somewhere safe (notes, email to yourself). It holds every level, collection, lineup and mistake.</p>' +
+      '<textarea id="bkcode" readonly ' + ta + '>' + bk.code + '</textarea>' +
+      '<div class="row"><button class="go" data-a="bkCopy">📋 Copy code</button><button class="ghost" data-a="bkFile">⬇️ Save as file</button></div></div>' +
+      '<div class="card"><b>2. Restore</b><p class="sub">On a new iPad or after losing progress: paste the code (or pick the file), then tap Restore. This replaces what is on this device.</p>' +
+      '<textarea id="bkin" placeholder="Paste your code here" ' + ta + '></textarea>' +
+      '<div class="row"><button class="go" data-a="bkRestore">♻️ Restore</button><label class="ghost" style="text-align:center;padding:12px;border-radius:14px;cursor:pointer">📂 Pick a file<input id="bkpick" type="file" accept=".txt,text/plain" style="display:none"></label></div>' +
+      (bk.msg ? '<div class="fb ' + (bk.ok ? 'good' : 'bad') + '">' + bk.msg + '</div>' : '') + '</div>');
+    bk.msg = '';
+  }
+  async function bkRestore() {
+    const ta = document.getElementById('bkin'), v = ta ? ta.value : '';
+    try {
+      const r = await PP.parseCode(v);
+      PP.restoreData(r);
+      document.getElementById('app').innerHTML = '<h1>Progress restored! 🎉</h1><p class="sub">Loading your saved progress…</p>';
+      setTimeout(() => location.reload(), 600);
+    } catch (e) { bk.ok = false; bk.msg = 'That code did not work. Make sure you copied all of it, starting with PP.'; backupView(); }
+  }
+  async function bkCopy() {
+    const ta = document.getElementById('bkcode'); ta.select(); ta.setSelectionRange(0, 999999999);
+    let ok = false; try { await navigator.clipboard.writeText(ta.value); ok = true; } catch (e) { try { ok = document.execCommand('copy'); } catch (e2) {} }
+    bk.ok = ok; bk.msg = ok ? 'Copied! Paste it somewhere safe.' : 'Could not copy automatically. The code is selected: touch and hold it, then tap Copy.'; backupView();
+    if (!ok) { const t2 = document.getElementById('bkcode'); t2.select(); }
+  }
+  function bkFile() {
+    const a = document.createElement('a'), d = new Date();
+    a.href = URL.createObjectURL(new Blob([bk.code], { type: 'text/plain' }));
+    a.download = 'puzzle-practice-backup-' + d.toISOString().slice(0, 10) + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    bk.ok = true; bk.msg = 'File saved (check your Files / Downloads).'; backupView();
+  }
+  document.getElementById('app').addEventListener('change', e => {
+    if (e.target.id !== 'bkpick' || !e.target.files[0]) return;
+    const rd = new FileReader();
+    rd.onload = () => { const ta = document.getElementById('bkin'); if (ta) ta.value = String(rd.result || ''); };
+    rd.readAsText(e.target.files[0]);
+  });
   function card(p, mini) {
     const t = PP.tier(p.r);
     return '<div class="pc t-' + t + (mini ? ' mini' : '') + '">' + jersey(p.team) + '<b>' + p.name + '</b><span class="pos">' + p.pos + '</span><span class="rt">' + p.r + '</span>' + (mini ? '' : '<small>' + PP.TIER_NAME[t] + '</small>') + '</div>';
@@ -271,7 +318,7 @@
     slotPick: v => { ed = ed === v ? null : v; fantasy(); const el = document.getElementById('picker'); if (el) el.scrollIntoView({ block: 'center' }); },
     slotSet: id => { if (ed) PP.fan.place(fs.pool, ed, id); ed = null; fantasy(); },
     slotClear: () => { if (ed) PP.fan.clear(fs.pool, ed); ed = null; fantasy(); }, slotClose: () => { ed = null; fantasy(); }, draftPool: v => { fs.pool = v; draft(); },
-    sessionDone, jerseys, jerLv: v => { jv.lv = v; jerseys(); }, toons, toonShow: v => { tv.show = v; toons(); }, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
+    backup, bkCopy, bkFile, bkRestore, sessionDone, jerseys, jerLv: v => { jv.lv = v; jerseys(); }, toons, toonShow: v => { tv.show = v; toons(); }, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
     shootout, shoot, memory, memFlip,
     mistakes, missFilter: v => { mv.f = v; mv.page = 0; mv.open = null; mistakes(); }, missSec: v => { mv.sec = v; mv.page = 0; mv.open = null; mistakes(); },
     missPage: v => { mv.page += +v; mv.open = null; mistakes(); }, missOpen: v => { mv.open = mv.open === v ? null : v; mistakes(); },
