@@ -1,7 +1,7 @@
 /* App screens. */
 (function () {
   const PP = window.PP, app = document.getElementById('app'), LN = PP.LEVEL_NAME, LI = PP.LEVEL_ICON;
-  let P = null, tm = null, qi = 0, sure = false, rv = null, resetArm = false, finArm = false;
+  let P = null, tm = null, qi = 0, sure = false, rv = null, resetArm = false, finArm = false, lvArm = false;
   const D = () => PP.D();
   const pc = (a, b) => (b ? Math.round(a / b * 100) : 0);
   const set = h => { app.innerHTML = h; window.scrollTo(0, 0); };
@@ -337,8 +337,10 @@
       '<h2>🧠 Mistakes</h2><div class="card">' + (mc.all ? '<div class="lvh"><b>Understood</b><span>' + mc.done + ' of ' + mc.all + '</span></div>' + bar(mc.done / mc.all * 100) + '<small class="mute">' + mc.open + ' still not understood · ' + mc.all + ' missed in total</small><ul class="weak" style="margin-top:8px">' + PP.SECS.map(s => ({ s, n: PP.missList('open', s.code).length })).filter(x => x.n).map(x => '<li>' + x.s.icon + ' ' + x.s.name + ': <b>' + x.n + '</b> not understood yet</li>').join('') + '</ul>' : '<p>No mistakes saved yet.</p>') + '<button class="ghost wide" data-a="mistakes" style="margin-top:10px">Open the mistakes notebook</button></div>' +
       '<h2>By puzzle type</h2><div class="card scroll"><table class="tbl"><thead><tr><th>Puzzle type</th><th>Answered</th><th>Last 20</th><th>' + lvName('e') + '</th><th>' + lvName('a') + '</th><th>' + lvName('c') + '</th></tr></thead><tbody>' + srows + '</tbody></table></div>' +
       '<h2>Needs more practice</h2><div class="card">' + (weak ? '<ul class="weak">' + weak + '</ul><small class="mute">Smart practice and the next mock test give extra questions on these.</small>' : '<p>Nothing stands out yet. Keep practicing and this list will fill in.</p>') + '</div>' +
+      '<button class="ghost" data-a="resetLevels">' + (lvArm ? 'Tap again: restart levels (collections stay)' : '🔄 Restart levels only (keep collections)') + '</button>' +
       '<button class="ghost" data-a="reset">' + (resetArm ? 'Tap again to erase everything' : 'Reset all progress') + '</button>');
   }
+  function resetLevels() { if (!lvArm) { lvArm = true; return tracker(); } lvArm = false; PP.resetLevels(); home(); }
   function reset() { if (!resetArm) { resetArm = true; return tracker(); } resetArm = false; PP.reset(); home(); }
 
   /* ---------------- Events ---------------- */
@@ -346,7 +348,7 @@
     home, sec: secView, practice, smart, smartGo: () => { P.smart = true; nextPractice(); }, pick, next, levelUp, focusStart, focusDone,
     mockStart, mockResume, mockHub: () => mockHub(false), mockPart: v => mockPart(v), mockGo, mockFinishAll, mockDonePart,
     mockJump: v => mockGoTo(+v), mockPrev: () => mockGoTo(qi - 1), mockNext: () => mockGoTo(qi + 1),
-    review, reviewTest: v => reviewTest(v), rq: (v, w) => reviewTest(rv.id, v, +w), tracker, reset
+    review, reviewTest: v => reviewTest(v), rq: (v, w) => reviewTest(rv.id, v, +w), tracker, reset, resetLevels
   };
   app.addEventListener('click', e => {
     const b = e.target.closest('[data-a]');

@@ -64,6 +64,7 @@
   };
   PP.restoreData = function (r) { localStorage.setItem(KEY, JSON.stringify(r)); };
   PP.save = () => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) {} };
+  PP.resetLevels = () => { D.sec = {}; D.ask = {}; D.sess = { n: 0, ok: 0 }; PP.save(); };   // level counters only: collections, tests, mistakes stay
   PP.reset = () => { D = fresh(); PP.save(); };
 
   const blank = () => ({ e: { c: 0, w: 0 }, a: { c: 0, w: 0 }, c: { c: 0, w: 0 } });
