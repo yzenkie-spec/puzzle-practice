@@ -52,7 +52,7 @@
     const ans = t[5];
     const extra = [t[4] + (t[4] - t[3]), t[4] + (t[3] - t[2]), t[4] + 1];
     const w = numOpts(r, ans, extra, 0);
-    return PP.mk(r, { stem: seqStem(t), correct: ans, wrong: w, exp: rule + ' So the next number is ' + ans + '.', key: t.slice(0, 5).join(',') });
+    return PP.mk(r, { stem: seqStem(t), correct: ans, wrong: w, exp: rule + ' So the next number is ' + ans + '.', key: t.slice(0, 5).join(','), tag: kind });
   };
 
   /* ---------------- Number Analogies ---------------- */
@@ -105,7 +105,7 @@
     const diff = rule.f(b) - b;
     const extra = [c + diff, c * (rule.f(b) / b | 0), rule.f(c) + 1, rule.f(c) - 1];
     const w = numOpts(r, ans, extra, 0);
-    return PP.mk(r, { stem, correct: ans, wrong: w, exp: 'The rule is: ' + rule.text + ' ' + c + ' → ' + ans + '.', key: a + ',' + b + ',' + c + ',' + rule.id });
+    return PP.mk(r, { stem, correct: ans, wrong: w, exp: 'The rule is: ' + rule.text + ' ' + c + ' → ' + ans + '.', key: a + ',' + b + ',' + c + ',' + rule.id, tag: /^\+\d/.test(rule.id) ? 'add' : /^-\d/.test(rule.id) ? 'subtract' : rule.id });
   };
 
   /* ---------------- Number Puzzles ---------------- */
@@ -144,6 +144,6 @@
     else if (k === 'tri') { const x = ri(r, 2, 10), y = ri(r, 2, 10); if (x === y) return null; const n = x + y; stem = '<p class="q">What number is ●?</p><p class="seq">▲ + ▲ = ' + (2 * x) + '<br>▲ + ● = ' + n + '</p>'; ans = y; exp = '▲ = ' + x + ', because ' + x + ' + ' + x + ' = ' + (2 * x) + '. Then ' + x + ' + ● = ' + n + ', so ● = ' + y + '.'; extra = [x, n, 2 * x]; }
     if (!Number.isInteger(ans) || ans < 0) return null;
     const w = numOpts(r, ans, extra, 0);
-    return PP.mk(r, { stem, correct: ans, wrong: w, exp, key: stem });
+    return PP.mk(r, { stem, correct: ans, wrong: w, exp, key: stem, tag: k });
   };
 })();

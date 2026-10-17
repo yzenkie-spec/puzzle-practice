@@ -82,23 +82,41 @@ svg.pfsteps{display:block;width:100%;max-width:520px;margin:10px auto 0}
 .tbl th,.tbl td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 .tbl th{font-size:15px;color:var(--mute)}
 :focus-visible{outline:4px solid var(--brand);outline-offset:3px}
+.hero{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.puck{font-size:54px;line-height:1;background:var(--card);border:3px solid var(--brand);border-radius:50%;width:84px;height:84px;display:grid;place-items:center;flex:none}
+.hero h1{margin:0}.hero .sub{margin:2px 0 0}
+.note{background:var(--sel);border-radius:14px;padding:8px 14px;margin:10px 0;font-weight:800;font-size:17px}
+.tile.part .lvh{align-items:center}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+.stat{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:12px 16px}
+.stat b{font:700 28px/1.1 Fredoka,system-ui,sans-serif;display:block}
+.dchart{display:flex;align-items:flex-end;gap:8px;height:150px;margin:6px 0 4px}
+.dcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.dbar{width:100%;max-width:46px;flex:1;display:flex;align-items:flex-end;background:var(--sel);border-radius:8px;overflow:hidden}
+.dbar i{display:block;width:100%;background:var(--brand);min-height:2px}
+.dval{font-size:13px;color:var(--mute);height:18px}.dlbl{font-size:13px;color:var(--mute)}
+.weak{margin:0;padding-left:22px}.weak li{margin:6px 0}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:20}
+.confetti span{position:absolute;top:-40px;animation:fall 2.6s ease-in forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg);opacity:.9}}
+@media (prefers-reduced-motion:reduce){.confetti{display:none}}
 @media (max-width:560px){h1{font-size:31px}.seq{font-size:30px}.q{font-size:22px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <main id="app"></main>
-<script src="js/core.js?v=2"></script>
-<script src="js/gen-quant.js?v=2"></script>
-<script src="js/gen-verbal.js?v=2"></script>
-<script src="js/data-sc-e.js?v=2"></script>
-<script src="js/data-sc-a.js?v=2"></script>
-<script src="js/data-sc-c.js?v=2"></script>
-<script src="js/figures.js?v=2"></script>
-<script src="js/gen-figure.js?v=2"></script>
-<script src="js/gen-fold.js?v=2"></script>
-<script src="js/app-state.js?v=2"></script>
-<script src="js/app-ui.js?v=2"></script>
-<script>PP.home();</script>
+<script src="js/core.js?v=3"></script>
+<script src="js/gen-quant.js?v=3"></script>
+<script src="js/gen-verbal.js?v=3"></script>
+<script src="js/data-sc-e.js?v=3"></script>
+<script src="js/data-sc-a.js?v=3"></script>
+<script src="js/data-sc-c.js?v=3"></script>
+<script src="js/figures.js?v=3"></script>
+<script src="js/gen-figure.js?v=3"></script>
+<script src="js/gen-fold.js?v=3"></script>
+<script src="js/app-state.js?v=3"></script>
+<script src="js/app-ui.js?v=3"></script>
+<script>PP.home();PP.warm();</script>
 </body>
 </html>

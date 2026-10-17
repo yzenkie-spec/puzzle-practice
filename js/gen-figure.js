@@ -69,7 +69,7 @@
     });
     const exp = rules.join(' ') + ' So the missing figure is ' + PP.figDesc(ans) + '.';
     const key = grid.map(PP.figKey).join('|');
-    return PP.mk(r, { stem, correct: PP.figSVG(ans), wrong: wrong.map(PP.figSVG), exp, key, svgOpts: true });
+    return PP.mk(r, { stem, correct: PP.figSVG(ans), wrong: wrong.map(PP.figSVG), exp, key, tag: Object.keys(plan).sort().join('+'), svgOpts: true });
   };
 
   /* ---------------- Figure Classification ---------------- */
@@ -122,6 +122,6 @@
     const parts = common.map(a => VALN[a](cv[a]));
     const exp = (common.length > 1 ? 'The three figures share two features: ' + parts.join(' and ') + '.' : 'The three figures are all ' + parts[0] + '.') + ' The right answer keeps ' + (common.length > 1 ? 'both of those features' : 'that same feature') + '. The other figures break it.';
     const key = three.map(PP.figKey).sort().join('|') + '#' + common.join('+');
-    return PP.mk(r, { stem, correct: PP.figSVG(correct), wrong: wrong.map(PP.figSVG), exp, key, svgOpts: true });
+    return PP.mk(r, { stem, correct: PP.figSVG(correct), wrong: wrong.map(PP.figSVG), exp, key, tag: common.join('+'), svgOpts: true });
   };
 })();

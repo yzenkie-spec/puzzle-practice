@@ -71,5 +71,15 @@ After the storm, the sky was ___ and the air smelled fresh.|clear|stormy|cloudy|
 It is ___ to be kind to people who are different from you.|important|silly|boring|useless|funny
 The ___ saved the cat from the tall tree.|firefighter|tailor|baker|painter|farmer
 Mom said I could have a ___ of cake, so I ate a small slice and saved the rest.|piece|mountain|bucket|forest|swarm
+The ___ stopped every shot, so the other team could not score.|goalie|fan|mascot|announcer|janitor
+Auston Matthews was ___ after scoring three goals, so he grinned the whole way home.|thrilled|gloomy|bored|sleepy|angry
+The referee blew the whistle because a player broke the ___.|rules|clouds|rainbows|oceans|alphabets
+Bluey was ___ to find her missing toy, and she hugged it tight.|relieved|furious|jealous|bored|sleepy
+The team practiced every day so they could ___ their skating.|improve|forget|ignore|spoil|lose
+Nathan MacKinnon is a very ___ player, so the other team always watches him closely.|skilled|clumsy|lazy|careless|timid
+The crowd was ___ when the game went into overtime, and nobody sat down.|excited|calm|sleepy|bored|silent
+Elsa uses her magic to turn water into ___.|ice|sand|smoke|wood|bread
+The coach gave the team an ___ talk before the big game to make everyone feel strong.|encouraging|gloomy|boring|angry|scary
+Cale Makar skated ___ around the other team and passed the puck to his teammate.|smoothly|sadly|loudly|sourly|hungrily
 `;
 })();

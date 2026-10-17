@@ -70,5 +70,15 @@ He put the milk back in the ___.|fridge|tub|oven|pocket|helmet
 The bell rang, and the students ran out for ___.|recess|bedtime|winter|midnight|sunrise
 The rabbit ___ across the field.|hopped|flew|swam|bloomed|melted
 I put a stamp on the ___ before mailing it.|envelope|sandwich|cloud|blanket|rock
+The goalie wore a big ___ to protect his face.|mask|sock|spoon|pillow|banana
+Connor McDavid skated very ___ down the ice.|fast|wet|round|sweet|salty
+Players hit the ___ with their sticks.|puck|cloud|grass|sock|soup
+The ___ is the frozen place where hockey is played.|rink|kitchen|garden|beach|desert
+SpongeBob lives in a pineapple under the ___.|sea|road|tree|bed|roof
+Mickey Mouse has big round ___.|ears|wheels|wings|fins|horns
+Wayne Gretzky wore number 99 on his ___.|jersey|banana|fork|pillow|tire
+It is very ___ at the hockey rink, so wear a warm jacket.|cold|hot|sunny|sandy|tropical
+The hockey fans ___ loudly when their team scored.|cheered|slept|melted|painted|baked
+After the game, the team drank ___ to cool down.|water|sand|paint|glue|soap
 `;
 })();

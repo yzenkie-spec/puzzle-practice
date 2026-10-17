@@ -26,20 +26,24 @@
 
   PP.BATTERIES = ['Verbal', 'Quantitative', 'Nonverbal'];
   PP.SECS = [
-    { code: 'VA', name: 'Verbal Analogies', bat: 0, how: 'Find how the first two words go together. Use the same link for the third word.' },
-    { code: 'SC', name: 'Sentence Completion', bat: 0, how: 'Pick the word that best fits in the blank.' },
-    { code: 'VC', name: 'Verbal Classification', bat: 0, how: 'Find how the three words are alike. Pick the word that belongs with them.' },
-    { code: 'NA', name: 'Number Analogies', bat: 1, how: 'Find the rule in the number pairs. Use it on the last number.' },
-    { code: 'NP', name: 'Number Puzzles', bat: 1, how: 'Find the missing number that makes the math true.' },
-    { code: 'NS', name: 'Number Series', bat: 1, how: 'Find the pattern. Pick the number that comes next.' },
-    { code: 'FM', name: 'Figure Matrices', bat: 2, how: 'Find the rule in the grid. Pick the figure that fits the empty box.' },
-    { code: 'PF', name: 'Paper Folding', bat: 2, how: 'The paper is folded and a hole is punched. Pick how it looks when unfolded.' },
-    { code: 'FC', name: 'Figure Classification', bat: 2, how: 'Find how the three figures are alike. Pick the figure that is most like them.' }
+    { code: 'VA', name: 'Verbal Analogies', icon: '🔗', bat: 0, how: 'Find how the first two words go together. Use the same link for the third word.' },
+    { code: 'SC', name: 'Sentence Completion', icon: '✏️', bat: 0, how: 'Pick the word that best fits in the blank.' },
+    { code: 'VC', name: 'Verbal Classification', icon: '🗂️', bat: 0, how: 'Find how the three words are alike. Pick the word that belongs with them.' },
+    { code: 'NA', name: 'Number Analogies', icon: '🔢', bat: 1, how: 'Find the rule in the number pairs. Use it on the last number.' },
+    { code: 'NP', name: 'Number Puzzles', icon: '🧩', bat: 1, how: 'Find the missing number that makes the math true.' },
+    { code: 'NS', name: 'Number Series', icon: '📈', bat: 1, how: 'Find the pattern. Pick the number that comes next.' },
+    { code: 'FM', name: 'Figure Matrices', icon: '🔲', bat: 2, how: 'Find the rule in the grid. Pick the figure that fits the empty box.' },
+    { code: 'PF', name: 'Paper Folding', icon: '📄', bat: 2, how: 'The paper is folded and a hole is punched. Pick how it looks when unfolded.' },
+    { code: 'FC', name: 'Figure Classification', icon: '🔷', bat: 2, how: 'Find how the three figures are alike. Pick the figure that is most like them.' }
   ];
   PP.sec = code => PP.SECS.find(s => s.code === code);
   PP.LEVELS = ['e', 'a', 'c'];
   PP.LEVEL_NAME = { e: 'Easy', a: 'Average', c: 'Challenging' };
-  PP.POOL = { e: 67, a: 67, c: 66 };      // 200 questions per section
+  PP.LEVEL_ICON = { e: '🥅', a: '⭐', c: '🏆' };
+  PP.LEVEL_ALIAS = { e: 'Rookie', a: 'All-Star', c: 'Legend' };
+  PP.POOL = { e: 67, a: 67, c: 66 };      // default: 200 questions per section
+  PP.POOLS = { VA: { e: 100, a: 100, c: 100 }, VC: { e: 100, a: 100, c: 100 }, NS: { e: 100, a: 100, c: 100 }, NA: { e: 100, a: 100, c: 100 }, FM: { e: 100, a: 100, c: 100 }, FC: { e: 100, a: 100, c: 100 }, NP: { e: 90, a: 100, c: 100 }, PF: { e: 90, a: 100, c: 100 } };
+  PP.poolSize = (code, lv) => code === 'SC' && PP.scLines ? PP.scLines(lv).length : (PP.POOLS[code] || PP.POOL)[lv];
   PP.LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
   PP.gens = {};   // code -> function(level, rng, k) returning a draft question or null
@@ -51,14 +55,14 @@
     for (const w of d.wrong) { if (!seen.has(String(w))) { seen.add(String(w)); wrong.push(w); } }
     if (wrong.length < 4) return null;
     const all = PP.shuffle(r, [{ h: d.correct, ok: true }].concat(wrong.slice(0, 4).map(h => ({ h, ok: false }))));
-    return { stem: d.stem, opts: all.map(o => o.h), ans: all.findIndex(o => o.ok), exp: d.exp, key: d.key || d.stem, svgOpts: !!d.svgOpts, dbg: d.dbg };
+    return { stem: d.stem, opts: all.map(o => o.h), ans: all.findIndex(o => o.ok), exp: d.exp, key: d.key || d.stem, tag: d.tag || '', svgOpts: !!d.svgOpts, dbg: d.dbg };
   };
 
   const cache = {};
   PP.pool = function (code, lv) {
     const ck = code + lv;
     if (cache[ck]) return cache[ck];
-    const need = PP.POOL[lv], out = [], keys = new Set();
+    const need = PP.poolSize(code, lv), out = [], keys = new Set();
     const gen = PP.gens[code];
     for (let k = 0; k < 40000 && out.length < need; k++) {
       const r = PP.rng(PP.hash(code + '|' + lv + '|' + k));

@@ -132,6 +132,6 @@
     }
     const stem = '<p class="q">The paper is folded along the dashed lines, and a hole is punched. How does the paper look when it is unfolded?</p><svg class="pfsteps" viewBox="0 0 ' + total + ' 100" role="img" aria-label="paper folding steps">' + g + '</svg>';
     const exp = 'Each hole is copied on the other side of every fold line, like a mirror. ' + (folds.length > 1 ? 'Unfold one fold at a time, starting with the last fold, and copy the holes across each fold line.' : 'Unfold the paper and copy the hole across the fold line.') + ' That gives ' + correctH.length + ' holes in total.';
-    return PP.mk(r, { stem, correct: optSVG(correctH), wrong, exp, key: name + '|' + ck + '|' + holeKey(holes), svgOpts: true, dbg: { holes, folds, correctH } });
+    return PP.mk(r, { stem, correct: optSVG(correctH), wrong, exp, key: name + '|' + ck + '|' + holeKey(holes), tag: name, svgOpts: true, dbg: { holes, folds, correctH } });
   };
 })();

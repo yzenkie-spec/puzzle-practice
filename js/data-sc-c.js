@@ -69,5 +69,15 @@ To ___ means to make something smaller.|reduce|expand|enlarge|increase|magnify
 The ___ of the story was a surprising twist that nobody expected.|ending|alphabet|ribbon|furniture|breakfast
 Our teacher told us to be ___ and not leave a mess in the classroom.|tidy|careless|messy|rowdy|lazy
 The climber felt ___ when she finally reached the peak after a hard climb.|triumphant|defeated|puzzled|gloomy|timid
+Connor Bedard's shot is so ___ that goalies barely have time to react.|swift|gentle|feeble|sluggish|tardy
+The goalie made a save at the last second that was truly ___, and the whole arena gasped.|astonishing|ordinary|forgettable|careless|dull
+The coach was ___ when the team lost, but he told them to try again tomorrow.|disappointed|ecstatic|amused|grateful|carefree
+Sidney Crosby is ___ for his hard work, which is why young players admire him.|famous|invisible|forbidden|ancient|fragile
+SpongeBob stayed ___ even when Squidward grumbled, and he kept smiling.|cheerful|miserable|furious|gloomy|resentful
+The defender ___ the other team's attack by taking the puck away.|prevented|encouraged|invited|admired|decorated
+Marie-Philip Poulin is a ___ captain who helps her teammates stay calm.|dependable|careless|reluctant|restless|fragile
+The players were ___ after the long tournament and could hardly lift their sticks.|exhausted|energetic|refreshed|cheerful|bored
+Moana was ___ to cross the ocean, even though the waves were huge.|courageous|timid|fearful|bored|lazy
+The hockey team showed great ___ by helping the other team when their player fell.|sportsmanship|jealousy|laziness|noise|mystery
 `;
 })();
