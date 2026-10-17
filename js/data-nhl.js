@@ -12,8 +12,17 @@
     NYI: ['#00539B', '#F47D30'], DAL: ['#006847', '#111111'], WPG: ['#041E42', '#7B303E'], MIN: ['#154734', '#A6192E'],
     NSH: ['#FFB81C', '#041E42'], WSH: ['#C8102E', '#041E42'], BUF: ['#003087', '#FFB81C'], DET: ['#CE1126', '#FFFFFF'],
     CBJ: ['#002654', '#CE1126'], STL: ['#002F87', '#FCB514'], CGY: ['#C8102E', '#F1BE48'], LAK: ['#A2AAAD', '#111111'],
-    ANA: ['#F47A38', '#B09862'], QUE: ['#4F8FD2', '#FFFFFF'], PHI: ['#F74902', '#111111']
+    ANA: ['#F47A38', '#B09862'], QUE: ['#4F8FD2', '#FFFFFF'], PHI: ['#F74902', '#111111'],
+    SEA: ['#001628', '#99D9D9'], UTA: ['#71AFE5', '#111111']
   };
+  // the 32 teams whose jerseys can be won
+  PP.JTEAMS = {
+    ANA: 'Anaheim', BOS: 'Boston', BUF: 'Buffalo', CGY: 'Calgary', CAR: 'Carolina', CHI: 'Chicago', COL: 'Colorado', CBJ: 'Columbus',
+    DAL: 'Dallas', DET: 'Detroit', EDM: 'Edmonton', FLA: 'Florida', LAK: 'Los Angeles', MIN: 'Minnesota', MTL: 'Montréal', NSH: 'Nashville',
+    NJD: 'New Jersey', NYI: 'NY Islanders', NYR: 'NY Rangers', OTT: 'Ottawa', PHI: 'Philadelphia', PIT: 'Pittsburgh', SJS: 'San Jose', SEA: 'Seattle',
+    STL: 'St. Louis', TBL: 'Tampa Bay', TOR: 'Toronto', UTA: 'Utah', VAN: 'Vancouver', VGK: 'Vegas', WSH: 'Washington', WPG: 'Winnipeg'
+  };
+  PP.JVAR = { e: 'Home', a: 'Away', c: 'Retro' };
 
   // name | team | position | rating
   const CUR = `

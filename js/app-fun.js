@@ -13,6 +13,25 @@
     const c = PP.TEAMS[team] || ['#555555', '#ffffff'];
     return '<svg class="jersey" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 14 L2 30 L14 34 L16 28 L16 58 L48 58 L48 28 L50 34 L62 30 L56 14 L44 6 Q32 16 20 6Z" fill="' + c[0] + '" stroke="#111" stroke-width="2" stroke-linejoin="round"/><rect x="16" y="38" width="32" height="6" fill="' + c[1] + '" opacity=".9"/><text x="32" y="31" text-anchor="middle" font-size="11" font-weight="800" fill="' + (dark(c[0]) ? '#ffffff' : '#111111') + '" font-family="Fredoka,sans-serif">' + team + '</text></svg>';
   }
+  function jerseyCard(j, mini) {
+    const c = PP.TEAMS[j.team], v = j.lv;
+    const body = v === 'a' ? '#ffffff' : c[0], trim = v === 'a' ? c[0] : c[1], txt = v === 'a' ? c[0] : (dark(c[0]) ? '#ffffff' : '#111111');
+    const svg = '<svg class="jersey" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 14 L2 30 L14 34 L16 28 L16 58 L48 58 L48 28 L50 34 L62 30 L56 14 L44 6 Q32 16 20 6Z" fill="' + body + '" stroke="#111" stroke-width="2" stroke-linejoin="round"/>' +
+      '<rect x="16" y="38" width="32" height="6" fill="' + trim + '"/><rect x="3" y="24" width="12" height="4" fill="' + trim + '" transform="rotate(-18 9 26)"/><rect x="49" y="24" width="12" height="4" fill="' + trim + '" transform="rotate(18 55 26)"/>' +
+      (v === 'c' ? '<path d="M32 12 l2.5 5 5.5.8-4 3.9.9 5.4-4.9-2.6-4.9 2.6.9-5.4-4-3.9 5.5-.8z" fill="#FFD54A" stroke="#111" stroke-width=".8"/>' : '') +
+      '<text x="32" y="' + (v === 'c' ? 36 : 31) + '" text-anchor="middle" font-size="11" font-weight="800" fill="' + txt + '" font-family="Fredoka,sans-serif">' + j.team + '</text></svg>';
+    return '<div class="pc jc t-' + (v === 'c' ? 'epic' : v === 'a' ? 'rare' : 'common') + (mini ? ' mini' : '') + '">' + svg + '<b>' + PP.JTEAMS[j.team] + '</b><span class="pos">' + PP.JVAR[v] + '</span>' + (j.n > 1 ? '<span class="rt">×' + j.n + '</span>' : '') + '</div>';
+  }
+  U.jerseyCard = jerseyCard;
+  const jv = { lv: 'e' };
+  function jerseys() {
+    U.stop();
+    const o = D().jer.owned, codes = Object.keys(PP.JTEAMS), all = codes.length * 3;
+    const have = Object.keys(o).length;
+    const chips = '<div class="chips">' + ['e', 'a', 'c'].map(l => '<button class="chip' + (jv.lv === l ? ' on' : '') + '" data-a="jerLv" data-v="' + l + '">' + PP.JVAR[l] + ' (' + codes.filter(c => o[c + '|' + l]).length + '/' + codes.length + ')</button>').join('') + '</div>';
+    const cells = codes.map(c => { const k = c + '|' + jv.lv; return o[k] ? '<div class="cc">' + jerseyCard({ team: c, lv: jv.lv, n: o[k] }, true) + '</div>' : '<div class="cc"><div class="pc locked mini"><b>???</b><span class="pos">' + PP.JTEAMS[c] + '</span></div></div>'; }).join('');
+    set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">👕 Jerseys</span></div><h1>Jersey collection</h1><div class="card"><div class="lvh"><b>Collected</b><span>' + have + ' of ' + all + '</span></div>' + U.bar(have / all * 100) + '<small class="mute">Pass a level to win a jersey. Easy = Home, Average = Away, Challenging = Retro.</small></div>' + chips + '<div class="cgrid">' + cells + '</div>');
+  }
   function card(p, mini) {
     const t = PP.tier(p.r);
     return '<div class="pc t-' + t + (mini ? ' mini' : '') + '">' + jersey(p.team) + '<b>' + p.name + '</b><span class="pos">' + p.pos + '</span><span class="rt">' + p.r + '</span>' + (mini ? '' : '<small>' + PP.TIER_NAME[t] + '</small>') + '</div>';
@@ -252,7 +271,7 @@
     slotPick: v => { ed = ed === v ? null : v; fantasy(); const el = document.getElementById('picker'); if (el) el.scrollIntoView({ block: 'center' }); },
     slotSet: id => { if (ed) PP.fan.place(fs.pool, ed, id); ed = null; fantasy(); },
     slotClear: () => { if (ed) PP.fan.clear(fs.pool, ed); ed = null; fantasy(); }, slotClose: () => { ed = null; fantasy(); }, draftPool: v => { fs.pool = v; draft(); },
-    sessionDone, toons, toonShow: v => { tv.show = v; toons(); }, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
+    sessionDone, jerseys, jerLv: v => { jv.lv = v; jerseys(); }, toons, toonShow: v => { tv.show = v; toons(); }, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
     shootout, shoot, memory, memFlip,
     mistakes, missFilter: v => { mv.f = v; mv.page = 0; mv.open = null; mistakes(); }, missSec: v => { mv.sec = v; mv.page = 0; mv.open = null; mistakes(); },
     missPage: v => { mv.page += +v; mv.open = null; mistakes(); }, missOpen: v => { mv.open = mv.open === v ? null : v; mistakes(); },

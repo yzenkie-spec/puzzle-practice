@@ -68,7 +68,7 @@
       '<div class="badges"><span>' + (k ? '🔥 ' + k + '-day streak' : '🔥 Start a streak today') + '</span><span>🥅 ' + d.stars + ' goals</span><span>⏱️ ' + mins(td.time) + ' today</span></div>' +
       bar(td.time / PP.DAILY_GOAL * 100) + '<small class="mute">Daily goal: 20 minutes of practice</small>';
     const mc = PP.missCounts(), pk = d.fan.picks.length;
-    h += '<div class="row"><button class="ghost" data-a="fantasyHome">🏆 Fantasy teams' + (pk ? ' <span class="pill">' + pk + ' pick' + (pk > 1 ? 's' : '') + '</span>' : '') + '</button><button class="ghost" data-a="toons">🎭 Cartoons <span class="pill">' + Object.keys(d.toon.owned).length + '</span></button><button class="ghost" data-a="mistakes">🧠 Mistakes' + (mc.open ? ' <span class="pill">' + mc.open + '</span>' : '') + '</button></div>';
+    h += '<div class="row"><button class="ghost" data-a="fantasyHome">🏆 Fantasy teams' + (pk ? ' <span class="pill">' + pk + ' pick' + (pk > 1 ? 's' : '') + '</span>' : '') + '</button><button class="ghost" data-a="jerseys">👕 Jerseys <span class="pill">' + Object.keys(d.jer.owned).length + '</span></button></div><div class="row"><button class="ghost" data-a="toons">🎭 Cartoons <span class="pill">' + Object.keys(d.toon.owned).length + '</span></button><button class="ghost" data-a="mistakes">🧠 Mistakes' + (mc.open ? ' <span class="pill">' + mc.open + '</span>' : '') + '</button></div>';
     h += '<div class="card main"><b>⚡ Smart practice</b><p class="sub">The app picks the puzzle types you need most. Get 8 of every 10 right to win a cartoon character!</p><button class="go" data-a="smart">Start smart practice</button></div>';
     if (d.cur) {
       h += '<div class="card main"><b>📋 Mock test in progress</b><p class="sub">' + PP.mockAnswered(d.cur) + ' of ' + PP.mockTotal(d.cur) + ' questions answered. You can jump to any part.</p><button class="go" data-a="mockResume">Continue mock test</button></div>';
@@ -163,7 +163,7 @@
         else if (res.cleared) { btn = 'Next puzzle type'; }
       }
       if (!ok) { P.twin = q.tag || null; P.twinLv = q.lv; }
-      if (res.levelPassed) P.passedLv = res.passedLv;
+      if (res.levelPassed) { P.passedLv = res.passedLv; P.jersey = res.jersey; }
       let extra = '';
       if (P.fromMiss) {
         btn = ok ? 'I understand it now ✅' : 'Try another like it'; act = ok ? 'missUnderstood' : 'next';
@@ -181,6 +181,7 @@
     const code = P.code, lv = P.passedLv || P.lv, i = PP.LEVELS.indexOf(lv), nx = PP.LEVELS[i + 1];
     confetti();
     set('<h1>Level passed! 🎉</h1><p class="sub">' + secName(code) + ' · ' + lvName(lv) + ' is done. ' + (nx ? lvName(nx) + ' is now open.' : 'You have passed every level in this puzzle type.') + '</p>' +
+      (P.jersey ? '<div class="card main"><b>👕 You won a jersey!</b><div class="reveal">' + PP.ui.jerseyCard(P.jersey, false) + '</div>' + (P.jersey.dup ? '<small class="mute">You already had this one, so you have a spare!</small>' : '<small class="mute">New for your collection! 🌟</small>') + '<button class="ghost wide" data-a="jerseys">👕 See my jerseys</button></div>' : '') +
       (P.smart ? '' : '<div class="card main"><b>🏒 You earned a draft pick!</b><p class="sub">' + D().fan.picks.length + ' pick' + (D().fan.picks.length > 1 ? 's' : '') + ' ready to use.</p><button class="go" data-a="draft">🏆 Draft a player</button></div>') + '<div class="menu">' +
       (P.smart ? '<button class="go" data-a="smartGo">Keep going</button>' : (nx ? '<button class="go" data-a="practice" data-v="' + code + '">Start ' + lvName(nx) + '</button>' : '')) +
       (P.smart && D().sess.n >= PP.SESSION ? '<button class="go" data-a="sessionDone">Finish session 🎉 and see your reward</button>' : '') +

@@ -12,7 +12,7 @@
 
   const freshTeam = name => ({ name, slots: {} });
   const fresh = () => ({ v: 3, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
-    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, toon: { owned: {}, hist: [] }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
+    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, toon: { owned: {}, hist: [] }, jer: { owned: {} }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
@@ -27,6 +27,7 @@
   } catch (e) {}
   if (D.cur) D.cur.subs.forEach(s => { s.end = 0; });
   if (!D.ask) D.ask = {};
+  if (!D.jer) D.jer = { owned: {} };
   if (!D.toon) D.toon = { owned: {}, hist: [] };
   ['cur', 'all'].forEach(p => {   // team spots: 3 lines + goalie (older saves had 6 spots)
     const t = D.fan.teams[p], old = t.slots, ns = {};
@@ -166,10 +167,12 @@
     PP.record(q, ok, secs, 'p', pick);
     PP.addTime(Math.min(secs || 0, 120));
     const sessionDone = smart ? PP.sessionAdd(ok) : false;   // only smart practice counts toward a cartoon character
+    let jersey = null;   // every level passed (regular or smart) = 1 team jersey; easy = home, average = away, challenging = retro
+    if (newly.length) jersey = PP.winJersey(newly[newly.length - 1]);
     const pickWon = !smart && newly.length > 0;               // regular practice: each level passed = 1 draft pick
     if (pickWon) PP.addPicks(1, 0);
     PP.save();
-    return { ok, levelPassed: newly.length > 0, passedLv: newly[newly.length - 1], sessionDone, pickWon };
+    return { ok, levelPassed: newly.length > 0, passedLv: newly[newly.length - 1], sessionDone, pickWon, jersey };
   };
 
   /* ---------- focus practice ---------- */
@@ -256,6 +259,13 @@
   PP.SESSION = SESSION;
   PP.sessionAdd = ok => { D.sess.n++; if (ok) D.sess.ok++; return D.sess.n >= SESSION; };
   PP.addPicks = function (count, q) { for (let i = 0; i < count; i++) D.fan.picks.push(q || 0); PP.save(); };
+  PP.winJersey = function (lv) {
+    const codes = Object.keys(PP.JTEAMS), fresh = codes.filter(c => !D.jer.owned[c + '|' + lv]);
+    const list = fresh.length ? fresh : codes, team = list[Math.floor(Math.random() * list.length)], key = team + '|' + lv;
+    const dup = !!D.jer.owned[key];
+    D.jer.owned[key] = (D.jer.owned[key] || 0) + 1;
+    return { team, lv, key, dup };
+  };
   /* smart practice: every 10 questions, 80% or more right = 1 cartoon character */
   const TBASE = { common: 1, rare: 0.6, epic: 0.3, legend: 0.12 };
   PP.claimSession = function () {
