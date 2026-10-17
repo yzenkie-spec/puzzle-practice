@@ -46,7 +46,7 @@
     set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">🏆 Fantasy teams</span></div><h1>My fantasy teams</h1>' + poolTabs('fanPool') +
       '<div class="card"><label class="mute" for="tname">Team name</label><input id="tname" class="tname" maxlength="24" value="' + esc(tm.name) + '"><div class="lvh"><b>Team rating</b><span>' + (rt.n ? rt.avg : '–') + ' · ' + rt.n + ' of 16 spots filled</span></div>' + U.bar(rt.avg) + '<small class="mute">' + PP.POOL_ICON[other] + ' ' + esc(PP.fan.team(other).name) + ': ' + (ro.n ? ro.avg : '–') + ' (' + ro.n + ' of 16)</small></div>' +
       '<h2>Lineup</h2><p class="sub">Tap a spot to choose any player you have collected. Pick a player who is already in another spot and the two swap places.</p>' + lineup(pool) + picker(pool) +
-      '<button class="ghost wide" data-a="collection" style="margin-top:10px">📇 Player collection (' + Object.keys(d.fan.owned).length + ' collected)</button>' + (pk ? '<button class="go" data-a="draft">Draft a player (' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready)</button>' : '<div class="card main"><b>No draft picks yet</b><p class="sub">Finish 10 practice questions to earn a pick. Get 8 or more right for a bonus pick. A mock test earns 3 or more.</p></div>') +
+      '<button class="ghost wide" data-a="collection" style="margin-top:10px">📇 Player collection (' + Object.keys(d.fan.owned).length + ' collected)</button>' + (pk ? '<button class="go" data-a="draft">Draft a player (' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready)</button>' : '<div class="card main"><b>No draft picks yet</b><p class="sub">Pass a level in regular practice to earn a pick. Score 90% or more on a mock test to earn one too.</p></div>') +
       (hist ? '<h2>Recent picks</h2><div class="card"><ul class="weak">' + hist + '</ul></div>' : '') +
       '<p class="sub mute">Player ratings are made up for this game. Teams are as of the 2025-26 season.</p>');
   }
@@ -96,24 +96,34 @@
   }
 
   /* ---------------- rewards after a session or test ---------------- */
+  function toonCard(t, n, mini) {
+    return '<div class="pc tc t-' + t.tier + (mini ? ' mini' : '') + '"><div class="temoji" style="background:' + t.color + '">' + t.emoji + '</div><b>' + t.name + '</b><span class="pos">' + t.show + '</span>' + (n > 1 ? '<span class="rt">×' + n + '</span>' : '') + (mini ? '' : '<small>' + PP.TIER_NAME[t.tier] + '</small>') + '</div>';
+  }
   function sessionDone() {
-    const info = PP.claimSession();
-    R = { from: 'practice', info, bonus: false };
-    rewards();
-  }
-  function rewardsFromMock() {
-    const t = D().tests[0];
-    R = { from: 'mock', info: { picks: t.rw || 0, n: PP.testCount(t), ok: PP.testTotal(t), mock: true }, bonus: false };
-    rewards();
-  }
-  function rewards() {
     U.stop();
-    const i = R.info, pk = D().fan.picks.length;
-    U.confetti();
-    set('<h1>' + (i.mock ? 'Test rewards! 🎁' : 'Session complete! 🎉') + '</h1><p class="sub">' + (i.mock ? 'You scored ' + i.ok + ' of ' + i.n + '.' : 'You got ' + i.ok + ' of ' + i.n + ' right.') + '</p>' +
-      '<div class="card main"><b>🏒 You earned ' + i.picks + ' draft pick' + (i.picks > 1 ? 's' : '') + '!</b><p class="sub">' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready to use.' + (R.bonus ? ' Bonus pick added!' : ' Win a mini-game for one more bonus pick.') + '</p></div><div class="menu">' +
-      '<button class="go" data-a="draft">🏆 Draft a player</button><button class="ghost wide" data-a="games">🎮 Play a mini-game' + (R.bonus ? '' : ' (bonus pick)') + '</button><button class="ghost wide" data-a="cont">' + (R.from === 'mock' ? 'Home' : 'Keep practicing') + '</button></div>');
+    const r = PP.claimSession();
+    R = { from: 'practice' };
+    if (r.toon) {
+      U.confetti();
+      set('<h1>Smart session complete! 🎉</h1><p class="sub">You got ' + r.ok + ' of ' + r.n + ' right. A cartoon character joins your collection!</p><div class="reveal">' + toonCard(r.toon, 1, false) + '</div>' +
+        (r.dup ? '<p class="sub">You already had this one, so now you have ' + D().toon.owned[r.toon.id] + '!</p>' : '<p class="sub">New character! 🌟</p>') +
+        '<div class="menu"><button class="go" data-a="cont">Keep practicing</button><button class="ghost wide" data-a="toons">🎭 See my collection</button><button class="ghost wide" data-a="games">🎮 Play a mini-game</button></div>');
+    } else {
+      set('<h1>Smart session complete!</h1><p class="sub">You got ' + r.ok + ' of ' + r.n + ' right. Get 8 of 10 right to win a cartoon character. Try the next 10!</p><div class="menu"><button class="go" data-a="cont">Keep practicing</button><button class="ghost wide" data-a="games">🎮 Play a mini-game</button></div>');
+    }
   }
+  const tv = { show: 'all' };
+  function toons() {
+    U.stop();
+    const o = D().toon.owned, shows = ['all'].concat(PP.TOONS.map(t => t.show).filter((s, i, a) => a.indexOf(s) === i));
+    const list = PP.TOONS.filter(t => tv.show === 'all' || t.show === tv.show), have = PP.TOONS.filter(t => o[t.id]).length;
+    const chips = '<div class="chips">' + shows.map(s => '<button class="chip' + (tv.show === s ? ' on' : '') + '" data-a="toonShow" data-v="' + s + '">' + (s === 'all' ? 'All' : s) + '</button>').join('') + '</div>';
+    const cells = list.map(t => o[t.id] ? '<div class="cc">' + toonCard(t, o[t.id], true) + '</div>' : '<div class="cc"><div class="pc locked tc mini"><div class="temoji" style="background:#9aa3b2">❓</div><b>???</b><span class="pos">' + t.show + '</span></div></div>').join('');
+    set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">🎭 Cartoons</span></div><h1>Cartoon collection</h1>' +
+      '<div class="card"><div class="lvh"><b>Collected</b><span>' + have + ' of ' + PP.TOONS.length + '</span></div>' + U.bar(have / PP.TOONS.length * 100) + '<small class="mute">Smart practice: get 8 of every 10 right to win a character.</small></div>' + chips + '<div class="cgrid">' + cells + '</div>');
+  }
+  function rewardsFromMock() { U.home(); }
+  function rewards() { U.home(); }
   function cont() {
     const P = U.getP();
     if (R && R.from === 'practice' && P && P.mode) { P.fromMiss = null; P.fixLv = null; return P.mode === 'practice' ? U.nextPractice() : U.nextFocus(); }
@@ -124,14 +134,13 @@
   function games() {
     U.stop();
     if (!R) R = { from: 'home', info: { picks: 0, n: 0, ok: 0 }, bonus: false };
-    set('<div class="top"><button class="ghost" data-a="rewardsBack">Back</button></div><h1>🎮 Mini-games</h1><p class="sub">' + (R.bonus ? 'You already won a bonus pick this time. Play for fun!' : 'Win a game to earn a bonus draft pick.') + '</p><div class="menu"><button class="go" data-a="shootout">🥅 Penalty shootout<small>Score 3 of 5 goals</small></button><button class="go" data-a="memory">🧠 Memory match<small>Finish in 12 moves or fewer</small></button></div>');
+    set('<div class="top"><button class="ghost" data-a="rewardsBack">Back</button></div><h1>🎮 Mini-games</h1><p class="sub">' + 'Just for fun. Have a go!' + '</p><div class="menu"><button class="go" data-a="shootout">🥅 Penalty shootout<small>Score 3 of 5 goals</small></button><button class="go" data-a="memory">🧠 Memory match<small>Finish in 12 moves or fewer</small></button></div>');
   }
   function gameEnd(win, title, text) {
-    if (win && R && !R.bonus) { R.bonus = true; PP.addPicks(1, 1); }
-    if (win) U.confetti();
+        if (win) U.confetti();
     const pk = D().fan.picks.length;
-    set('<h1>' + title + '</h1><p class="sub">' + text + '</p>' + (win ? '<div class="card main"><b>🏒 Bonus draft pick!</b><p class="sub">' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready.</p></div>' : '') +
-      '<div class="menu"><button class="go" data-a="draft">🏆 Draft a player</button><button class="ghost wide" data-a="games">Play another game</button><button class="ghost wide" data-a="cont">' + (R && R.from === 'mock' ? 'Home' : 'Keep practicing') + '</button></div>');
+    set('<h1>' + title + '</h1><p class="sub">' + text + '</p>' + '' +
+      '<div class="menu"><button class="go" data-a="games">Play another game</button><button class="ghost wide" data-a="cont">' + (R && R.from === 'practice' ? 'Keep practicing' : 'Home') + '</button></div>');
   }
 
   /* penalty shootout: tap SHOOT when the target is over an open spot */
@@ -168,7 +177,7 @@
     setTimeout(() => {
       if (!document.getElementById('gb')) return;
       SO.i++;
-      if (SO.i >= 5) { const w = SO.goals >= 3; gameEnd(w, w ? 'You win! 🏆' : 'Good effort!', 'You scored ' + SO.goals + ' of 5 goals.' + (w ? '' : ' Score 3 to win a bonus pick. Try again!')); }
+      if (SO.i >= 5) { const w = SO.goals >= 3; gameEnd(w, w ? 'You win! 🏆' : 'Good effort!', 'You scored ' + SO.goals + ' of 5 goals.' + (w ? '' : ' Try again!')); }
       else { msg.textContent = 'Next shot! Tap SHOOT at the right moment.'; soStart(); }
     }, 1300);
   }
@@ -200,7 +209,7 @@
         if (hit) MM.done.push(a, b);
         MM.open = []; MM.lock = false;
         document.getElementById('mgrid').innerHTML = memGrid();
-        if (MM.done.length === 12) setTimeout(() => { const w = MM.moves <= 12; gameEnd(w, w ? 'Perfect memory! 🏆' : 'All pairs found!', 'You finished in ' + MM.moves + ' moves.' + (w ? '' : ' Finish in 12 or fewer for a bonus pick.')); }, 500);
+        if (MM.done.length === 12) setTimeout(() => { const w = MM.moves <= 12; gameEnd(w, w ? 'Perfect memory! 🏆' : 'All pairs found!', 'You finished in ' + MM.moves + ' moves.' + (w ? '' : '')); }, 500);
       }, hit ? 400 : 800);
     }
   }
@@ -243,7 +252,7 @@
     slotPick: v => { ed = ed === v ? null : v; fantasy(); const el = document.getElementById('picker'); if (el) el.scrollIntoView({ block: 'center' }); },
     slotSet: id => { if (ed) PP.fan.place(fs.pool, ed, id); ed = null; fantasy(); },
     slotClear: () => { if (ed) PP.fan.clear(fs.pool, ed); ed = null; fantasy(); }, slotClose: () => { ed = null; fantasy(); }, draftPool: v => { fs.pool = v; draft(); },
-    sessionDone, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
+    sessionDone, toons, toonShow: v => { tv.show = v; toons(); }, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
     shootout, shoot, memory, memFlip,
     mistakes, missFilter: v => { mv.f = v; mv.page = 0; mv.open = null; mistakes(); }, missSec: v => { mv.sec = v; mv.page = 0; mv.open = null; mistakes(); },
     missPage: v => { mv.page += +v; mv.open = null; mistakes(); }, missOpen: v => { mv.open = mv.open === v ? null : v; mistakes(); },

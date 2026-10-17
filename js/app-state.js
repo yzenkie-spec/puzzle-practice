@@ -12,7 +12,7 @@
 
   const freshTeam = name => ({ name, slots: {} });
   const fresh = () => ({ v: 3, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
-    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
+    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, toon: { owned: {}, hist: [] }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
@@ -27,6 +27,7 @@
   } catch (e) {}
   if (D.cur) D.cur.subs.forEach(s => { s.end = 0; });
   if (!D.ask) D.ask = {};
+  if (!D.toon) D.toon = { owned: {}, hist: [] };
   ['cur', 'all'].forEach(p => {   // team spots: 3 lines + goalie (older saves had 6 spots)
     const t = D.fan.teams[p], old = t.slots, ns = {};
     PP.SLOTS.forEach(k => { ns[k] = null; });
@@ -155,7 +156,7 @@
     const base = PP.LEVELS.indexOf(PP.curLevel(code)), a = D.ask[code];
     return PP.LEVELS[Math.max(base, a === undefined ? base : a)];
   };
-  PP.answerPractice = function (q, pick, secs) {
+  PP.answerPractice = function (q, pick, secs, smart) {
     const ok = pick === q.ans, qi = PP.LEVELS.indexOf(q.lv);
     const before = PP.LEVELS.filter(l => PP.passed(q.sec, l));
     // a right answer counts for its own level and for every easier level too
@@ -164,9 +165,11 @@
     const newly = PP.LEVELS.filter(l => PP.passed(q.sec, l) && !before.includes(l));
     PP.record(q, ok, secs, 'p', pick);
     PP.addTime(Math.min(secs || 0, 120));
-    const sessionDone = PP.sessionAdd(ok);
+    const sessionDone = smart ? PP.sessionAdd(ok) : false;   // only smart practice counts toward a cartoon character
+    const pickWon = !smart && newly.length > 0;               // regular practice: each level passed = 1 draft pick
+    if (pickWon) PP.addPicks(1, 0);
     PP.save();
-    return { ok, levelPassed: newly.length > 0, passedLv: newly[newly.length - 1], sessionDone };
+    return { ok, levelPassed: newly.length > 0, passedLv: newly[newly.length - 1], sessionDone, pickWon };
   };
 
   /* ---------- focus practice ---------- */
@@ -180,7 +183,7 @@
     if (ok) n.got++;
     PP.record(q, ok, secs, 'f', pick);
     PP.addTime(Math.min(secs || 0, 120));
-    const sessionDone = PP.sessionAdd(ok);
+    const sessionDone = false;
     const cleared = ok && n.got >= FOCUS_NEED;
     const allCleared = cleared && PP.focusLeft().length === 0;
     if (allCleared) D.focus = null;
@@ -253,19 +256,32 @@
   PP.SESSION = SESSION;
   PP.sessionAdd = ok => { D.sess.n++; if (ok) D.sess.ok++; return D.sess.n >= SESSION; };
   PP.addPicks = function (count, q) { for (let i = 0; i < count; i++) D.fan.picks.push(q || 0); PP.save(); };
-  /* every 10 practice questions = 1 pick; 80% right = a second pick */
+  /* smart practice: every 10 questions, 80% or more right = 1 cartoon character */
+  const TBASE = { common: 1, rare: 0.6, epic: 0.3, legend: 0.12 };
   PP.claimSession = function () {
     const n = D.sess.n, ok = D.sess.ok, acc = n ? ok / n : 0;
-    const picks = 1 + (acc >= 0.8 ? 1 : 0), q = acc >= 0.9 ? 2 : acc >= 0.7 ? 1 : 0;
     D.sess = { n: 0, ok: 0 };
-    PP.addPicks(picks, q);
-    return { n, ok, picks, q };
+    let toon = null, dup = false;
+    if (acc >= 0.8) {
+      const boost = acc >= 1 ? 3 : acc >= 0.9 ? 1.8 : 1;
+      const w = t => TBASE[t.tier] * (t.tier === 'common' ? 1 : boost) * (D.toon.owned[t.id] ? 0.25 : 1);
+      const list = PP.TOONS, tot = list.reduce((s, t) => s + w(t), 0);
+      let r = Math.random() * tot;
+      toon = list[list.length - 1];
+      for (const t of list) { r -= w(t); if (r <= 0) { toon = t; break; } }
+      dup = !!D.toon.owned[toon.id];
+      D.toon.owned[toon.id] = (D.toon.owned[toon.id] || 0) + 1;
+      D.toon.hist.unshift({ id: toon.id, t: Date.now() }); D.toon.hist = D.toon.hist.slice(0, 20);
+    }
+    PP.save();
+    return { n, ok, acc, toon, dup };
   };
+  /* mock test: 90% or more = 1 draft pick */
   PP.mockReward = function (test) {
     const pct = PP.testTotal(test) / PP.testCount(test);
-    const picks = 3 + (pct >= 0.7 ? 1 : 0) + (pct >= 0.9 ? 1 : 0), q = pct >= 0.9 ? 2 : pct >= 0.7 ? 1 : 0;
-    test.rw = picks; PP.addPicks(picks, q);
-    return { picks, q };
+    const picks = pct >= 0.9 ? 1 : 0;
+    test.rw = picks; if (picks) PP.addPicks(picks, 2);
+    return { picks, q: 2 };
   };
   const BASE = { common: 1, rare: 0.6, epic: 0.3, legend: 0.12 };
   const BOOST = [{ common: 1, rare: 1, epic: 1, legend: 1 }, { common: 1, rare: 1.5, epic: 2, legend: 3 }, { common: 1, rare: 2.5, epic: 4, legend: 7 }];
