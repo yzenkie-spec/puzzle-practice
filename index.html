@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Puzzle Practice</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Puzzles">
+<meta name="theme-color" content="#3b6fe0">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#EAF3FF;--card:#FFFFFF;--ink:#1F2A44;--mute:#56627F;--ok:#1E8E5A;--okbg:#DFF5E8;--no:#C2410C;--nobg:#FFE9DD;--line:#C9D8F0;--brand:#3B6FE0;--on-brand:#FFFFFF;--sel:#E3ECFF}
@@ -145,20 +151,21 @@ svg.pfsteps{display:block;width:100%;max-width:520px;margin:10px auto 0}
 </head>
 <body>
 <main id="app"></main>
-<script src="js/core.js?v=13"></script>
-<script src="js/gen-quant.js?v=13"></script>
-<script src="js/gen-verbal.js?v=13"></script>
-<script src="js/data-sc-e.js?v=13"></script>
-<script src="js/data-sc-a.js?v=13"></script>
-<script src="js/data-sc-c.js?v=13"></script>
-<script src="js/figures.js?v=13"></script>
-<script src="js/gen-figure.js?v=13"></script>
-<script src="js/gen-fold.js?v=13"></script>
-<script src="js/data-toon.js?v=13"></script>
-<script src="js/data-nhl.js?v=13"></script>
-<script src="js/app-state.js?v=13"></script>
-<script src="js/app-ui.js?v=13"></script>
-<script src="js/app-fun.js?v=13"></script>
-<script>PP.home();PP.warm();</script>
+<script src="js/core.js?v=14"></script>
+<script src="js/gen-quant.js?v=14"></script>
+<script src="js/gen-verbal.js?v=14"></script>
+<script src="js/data-sc-e.js?v=14"></script>
+<script src="js/data-sc-a.js?v=14"></script>
+<script src="js/data-sc-c.js?v=14"></script>
+<script src="js/figures.js?v=14"></script>
+<script src="js/gen-figure.js?v=14"></script>
+<script src="js/gen-fold.js?v=14"></script>
+<script src="js/data-toon.js?v=14"></script>
+<script src="js/data-nhl.js?v=14"></script>
+<script src="js/app-state.js?v=14"></script>
+<script src="js/app-ui.js?v=14"></script>
+<script src="js/app-fun.js?v=14"></script>
+<script>PP.home();PP.warm();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
 </body>
 </html>
