@@ -161,8 +161,12 @@ Johnny Bower|TOR|G|85
   PP.NHL.cur.concat(PP.NHL.all).forEach(p => { PP.NHL_BY_ID[p.id] = p; });
   PP.POOL_NAME = { cur: 'Current Stars', all: 'All-Time Legends' };
   PP.POOL_ICON = { cur: '🔥', all: '👑' };
-  PP.SLOTS = ['LW', 'C', 'RW', 'D1', 'D2', 'G'];
-  PP.SLOT_POS = { LW: 'LW', C: 'C', RW: 'RW', D1: 'D', D2: 'D', G: 'G' };
+  // 3 forward lines (left wing, center, right wing), a defense pair for each line, and a goalie
+  PP.SLOTS = ['LW1', 'C1', 'RW1', 'D1a', 'D1b', 'LW2', 'C2', 'RW2', 'D2a', 'D2b', 'LW3', 'C3', 'RW3', 'D3a', 'D3b', 'G'];
+  PP.SLOT_POS = {}; PP.SLOTS.forEach(s => { PP.SLOT_POS[s] = s === 'G' ? 'G' : s.startsWith('D') ? 'D' : s.replace(/\d/g, ''); });
+  PP.SLOT_LINE = s => (s === 'G' ? 0 : +s.match(/\d/)[0]);
+  PP.SLOT_NAME = { LW: 'Left wing', C: 'Center', RW: 'Right wing', D: 'Defense', G: 'Goalie' };
+  PP.slotName = s => PP.SLOT_NAME[PP.SLOT_POS[s]] + (s === 'G' ? '' : ', line ' + PP.SLOT_LINE(s));
   PP.POS_NAME = { C: 'Center', LW: 'Left wing', RW: 'Right wing', D: 'Defense', G: 'Goalie' };
   PP.tier = r => (r >= 97 ? 'legend' : r >= 93 ? 'epic' : r >= 88 ? 'rare' : 'common');
   PP.TIER_NAME = { legend: 'Legendary', epic: 'Epic', rare: 'Rare', common: 'Common' };

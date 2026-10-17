@@ -10,7 +10,7 @@
   const DAILY_GOAL = 20 * 60;
   PP.NEED = NEED; PP.FOCUS_NEED = FOCUS_NEED; PP.MOCK_SECONDS = MOCK_SECONDS; PP.PER_LEVEL = PER_LEVEL; PP.DAILY_GOAL = DAILY_GOAL;
 
-  const freshTeam = name => ({ name, slots: { LW: null, C: null, RW: null, D1: null, D2: null, G: null } });
+  const freshTeam = name => ({ name, slots: {} });
   const fresh = () => ({ v: 3, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
     miss: {}, ask: {}, sess: { n: 0, ok: 0 }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
@@ -27,6 +27,14 @@
   } catch (e) {}
   if (D.cur) D.cur.subs.forEach(s => { s.end = 0; });
   if (!D.ask) D.ask = {};
+  ['cur', 'all'].forEach(p => {   // team spots: 3 lines + goalie (older saves had 6 spots)
+    const t = D.fan.teams[p], old = t.slots, ns = {};
+    PP.SLOTS.forEach(k => { ns[k] = null; });
+    const map = { LW: 'LW1', C: 'C1', RW: 'RW1', D1: 'D1a', D2: 'D1b', G: 'G' };
+    Object.keys(old).forEach(k => { if (old[k]) ns[map[k] || k] = old[k]; });
+    t.slots = ns;
+    Object.keys(ns).forEach(k => { if (ns[k]) D.fan.owned[ns[k]] = 1; });   // anyone in a lineup is collected
+  });
   if (!D.fan.owned) {   // everyone drafted so far belongs in the collection
     D.fan.owned = {};
     ['cur', 'all'].forEach(p => Object.keys(D.fan.teams[p].slots).forEach(k => { if (D.fan.teams[p].slots[k]) D.fan.owned[D.fan.teams[p].slots[k]] = 1; }));
@@ -265,31 +273,22 @@
   const team = pool => D.fan.teams[pool];
   PP.fan = {
     team,
-    onTeam: (pool, id) => PP.SLOTS.some(s => team(pool).slots[s] === id),
-    /* can this player fill an empty slot or beat the weakest player at his position? */
-    eligible(pool, p) {
-      if (PP.fan.onTeam(pool, p.id)) return false;
-      const ss = slotsFor(p.pos), t = team(pool).slots;
-      if (ss.some(s => !t[s])) return true;
-      return p.r > Math.min.apply(null, ss.map(s => PP.NHL_BY_ID[t[s]].r));
-    },
-    target(pool, p) {   // slot the player would take
-      const ss = slotsFor(p.pos), t = team(pool).slots;
-      const empty = ss.find(s => !t[s]);
-      if (empty) return { slot: empty, old: null };
-      const low = ss.slice().sort((a, b) => PP.NHL_BY_ID[t[a]].r - PP.NHL_BY_ID[t[b]].r)[0];
-      return { slot: low, old: PP.NHL_BY_ID[t[low]] };
-    },
+    owned: id => !!D.fan.owned[id],
+    placedAt: (pool, id) => PP.SLOTS.find(s => team(pool).slots[s] === id) || null,
+    onTeam: (pool, id) => !!PP.fan.placedAt(pool, id),
+    eligible: (pool, p) => !D.fan.owned[p.id],     // any player not collected yet can be drafted
+    nextSlot: (pool, pos) => slotsFor(pos).find(s => !team(pool).slots[s]) || null,
     offer(pool) {   // three players to choose from, saved so a reload gives the same choices
       if (!D.fan.picks.length) return null;
       const saved = D.fan.offer[pool];
       if (saved && saved.length && saved.every(id => PP.fan.eligible(pool, PP.NHL_BY_ID[id]))) return saved.map(id => PP.NHL_BY_ID[id]);
-      const q = D.fan.picks[0], t = team(pool).slots;
-      const needPos = {}; PP.SLOTS.forEach(s => { if (!t[s]) needPos[PP.SLOT_POS[s]] = 1; });
+      const q = D.fan.picks[0];
+      const need = {};   // positions that still have empty lineup spots
+      PP.SLOTS.forEach(s => { if (!team(pool).slots[s]) need[PP.SLOT_POS[s]] = 1; });
       let cand = PP.NHL[pool].filter(p => PP.fan.eligible(pool, p));
       const out = [];
       while (out.length < 3 && cand.length) {
-        const w = cand.map(p => { const tr = PP.tier(p.r); return BASE[tr] * BOOST[q][tr] * (needPos[p.pos] ? 2 : 1); });
+        const w = cand.map(p => { const tr = PP.tier(p.r); return BASE[tr] * BOOST[q][tr] * (need[p.pos] ? 1.6 : 1); });
         let x = Math.random() * w.reduce((a, b) => a + b, 0), i = 0;
         while (i < cand.length - 1 && (x -= w[i]) > 0) i++;
         out.push(cand[i]); cand = cand.filter((_, j) => j !== i);
@@ -297,22 +296,34 @@
       D.fan.offer[pool] = out.map(p => p.id); PP.save();
       return out;
     },
+    /* draft = add to the collection, and put him in the first empty spot for his position */
     draft(pool, id) {
       const p = PP.NHL_BY_ID[id];
       if (!D.fan.picks.length || !PP.fan.eligible(pool, p)) return null;
-      const tg = PP.fan.target(pool, p);
-      team(pool).slots[tg.slot] = p.id; D.fan.owned[p.id] = 1;
+      D.fan.owned[p.id] = 1;
+      const slot = PP.fan.nextSlot(pool, p.pos);
+      if (slot) team(pool).slots[slot] = p.id;
       D.fan.picks.shift(); D.fan.offer = {};
-      D.fan.hist.unshift({ pool, id: p.id, old: tg.old ? tg.old.id : null, ts: Date.now() });
+      D.fan.hist.unshift({ pool, id: p.id, old: null, ts: Date.now() });
       D.fan.hist = D.fan.hist.slice(0, 40);
       PP.save();
-      return tg;
+      return { slot };
     },
+    /* put a collected player in a spot; if he is already in another spot the two players swap */
+    place(pool, slot, id) {
+      const p = PP.NHL_BY_ID[id];
+      if (!p || !D.fan.owned[id] || p.pool !== pool || PP.SLOT_POS[slot] !== p.pos) return false;
+      const sl = team(pool).slots, here = sl[slot], from = PP.fan.placedAt(pool, id);
+      if (from) sl[from] = here || null;
+      sl[slot] = id; PP.save();
+      return true;
+    },
+    clear(pool, slot) { team(pool).slots[slot] = null; PP.save(); },
     rating(pool) {
       const ids = PP.SLOTS.map(s => team(pool).slots[s]).filter(Boolean);
       return { n: ids.length, avg: ids.length ? Math.round(ids.reduce((a, id) => a + PP.NHL_BY_ID[id].r, 0) / ids.length) : 0 };
     },
-    complete: pool => PP.NHL[pool].every(p => !PP.fan.eligible(pool, p)),
+    complete: pool => PP.NHL[pool].every(p => D.fan.owned[p.id]),
     setName(pool, name) { team(pool).name = String(name).slice(0, 24); PP.save(); }
   };
 

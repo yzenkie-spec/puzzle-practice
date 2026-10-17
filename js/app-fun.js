@@ -17,11 +17,23 @@
     const t = PP.tier(p.r);
     return '<div class="pc t-' + t + (mini ? ' mini' : '') + '">' + jersey(p.team) + '<b>' + p.name + '</b><span class="pos">' + p.pos + '</span><span class="rt">' + p.r + '</span>' + (mini ? '' : '<small>' + PP.TIER_NAME[t] + '</small>') + '</div>';
   }
-  const slotLabel = s => ({ LW: 'Left wing', C: 'Center', RW: 'Right wing', D1: 'Defense', D2: 'Defense', G: 'Goalie' }[s]);
+  let ed = null;   // lineup spot being edited
   function lineup(pool) {
     const t = PP.fan.team(pool).slots;
-    const cell = s => '<div class="slot">' + (t[s] ? card(PP.NHL_BY_ID[t[s]], true) : '<div class="pc empty"><span>' + slotLabel(s) + '</span><small>empty</small></div>') + '</div>';
-    return '<div class="lineup"><div class="lrow">' + ['LW', 'C', 'RW'].map(cell).join('') + '</div><div class="lrow">' + ['D1', 'D2'].map(cell).join('') + '</div><div class="lrow">' + cell('G') + '</div></div>';
+    const cell = s => '<div class="slot"><button class="slotbtn' + (ed === s ? ' sel' : '') + '" data-a="slotPick" data-v="' + s + '" aria-label="' + PP.slotName(s) + '">' +
+      (t[s] ? card(PP.NHL_BY_ID[t[s]], true) : '<div class="pc empty"><span>' + PP.SLOT_NAME[PP.SLOT_POS[s]] + '</span><small>tap to add</small></div>') + '</button></div>';
+    let h = '<div class="lineup">';
+    [1, 2, 3].forEach(n => { h += '<div class="lname">Line ' + n + '</div><div class="lrow">' + ['LW', 'C', 'RW'].map(x => cell(x + n)).join('') + '</div><div class="lrow">' + ['a', 'b'].map(x => cell('D' + n + x)).join('') + '</div>'; });
+    return h + '<div class="lname">Goalie</div><div class="lrow">' + cell('G') + '</div></div>';
+  }
+  function picker(pool) {
+    if (!ed) return '';
+    const pos = PP.SLOT_POS[ed], cur = PP.fan.team(pool).slots[ed];
+    const list = PP.NHL[pool].filter(p => p.pos === pos && PP.fan.owned(p.id)).sort((a, b) => b.r - a.r);
+    const cards = list.map(p => { const at = PP.fan.placedAt(pool, p.id); return '<button class="pickc" data-a="slotSet" data-v="' + p.id + '">' + card(p, true) + '<small class="' + (cur === p.id ? 'good' : 'mute') + '">' + (cur === p.id ? 'In this spot' : at ? 'Now on ' + PP.slotName(at).toLowerCase() + ' (swap)' : 'On the bench') + '</small></button>'; }).join('');
+    return '<div class="card main" id="picker"><div class="lvh"><b>Choose your ' + PP.slotName(ed).toLowerCase() + '</b><button class="ghost" data-a="slotClose">Close</button></div>' +
+      (list.length ? '<div class="cgrid">' + cards + '</div>' : '<p class="sub">You have not collected a ' + PP.POS_NAME[pos].toLowerCase() + ' yet. Earn draft picks to collect more players!</p>') +
+      (cur ? '<button class="ghost wide" data-a="slotClear">Take him out of this spot</button>' : '') + '</div>';
   }
   const poolTabs = act => '<div class="tabs">' + ['cur', 'all'].map(p => '<button class="tab' + (fs.pool === p ? ' on' : '') + '" data-a="' + act + '" data-v="' + p + '">' + PP.POOL_ICON[p] + ' ' + PP.POOL_NAME[p] + '</button>').join('') + '</div>';
 
@@ -30,10 +42,10 @@
     U.stop();
     const d = D(), pool = fs.pool, tm = PP.fan.team(pool), rt = PP.fan.rating(pool), pk = d.fan.picks.length;
     const other = pool === 'cur' ? 'all' : 'cur', ro = PP.fan.rating(other);
-    const hist = d.fan.hist.slice(0, 6).map(h => { const p = PP.NHL_BY_ID[h.id], o = h.old ? PP.NHL_BY_ID[h.old] : null; return '<li>' + PP.POOL_ICON[h.pool] + ' <b>' + p.name + '</b> (' + p.r + ')' + (o ? ' replaced ' + o.name + ' (' + o.r + ')' : ' joined the team') + '</li>'; }).join('');
+    const hist = d.fan.hist.slice(0, 6).map(h => { const p = PP.NHL_BY_ID[h.id], o = h.old ? PP.NHL_BY_ID[h.old] : null; return '<li>' + PP.POOL_ICON[h.pool] + ' <b>' + p.name + '</b> (' + p.r + ')' + (o ? ' replaced ' + o.name + ' (' + o.r + ')' : ' added to the collection') + '</li>'; }).join('');
     set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">🏆 Fantasy teams</span></div><h1>My fantasy teams</h1>' + poolTabs('fanPool') +
-      '<div class="card"><label class="mute" for="tname">Team name</label><input id="tname" class="tname" maxlength="24" value="' + esc(tm.name) + '"><div class="lvh"><b>Team rating</b><span>' + (rt.n ? rt.avg : '–') + ' · ' + rt.n + ' of 6 players</span></div>' + U.bar(rt.avg) + '<small class="mute">' + PP.POOL_ICON[other] + ' ' + esc(PP.fan.team(other).name) + ': ' + (ro.n ? ro.avg : '–') + ' (' + ro.n + ' of 6)</small></div>' +
-      lineup(pool) +
+      '<div class="card"><label class="mute" for="tname">Team name</label><input id="tname" class="tname" maxlength="24" value="' + esc(tm.name) + '"><div class="lvh"><b>Team rating</b><span>' + (rt.n ? rt.avg : '–') + ' · ' + rt.n + ' of 16 spots filled</span></div>' + U.bar(rt.avg) + '<small class="mute">' + PP.POOL_ICON[other] + ' ' + esc(PP.fan.team(other).name) + ': ' + (ro.n ? ro.avg : '–') + ' (' + ro.n + ' of 16)</small></div>' +
+      '<h2>Lineup</h2><p class="sub">Tap a spot to choose any player you have collected. Pick a player who is already in another spot and the two swap places.</p>' + lineup(pool) + picker(pool) +
       '<button class="ghost wide" data-a="collection" style="margin-top:10px">📇 Player collection (' + Object.keys(d.fan.owned).length + ' collected)</button>' + (pk ? '<button class="go" data-a="draft">Draft a player (' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready)</button>' : '<div class="card main"><b>No draft picks yet</b><p class="sub">Finish 10 practice questions to earn a pick. Get 8 or more right for a bonus pick. A mock test earns 3 or more.</p></div>') +
       (hist ? '<h2>Recent picks</h2><div class="card"><ul class="weak">' + hist + '</ul></div>' : '') +
       '<p class="sub mute">Player ratings are made up for this game. Teams are as of the 2025-26 season.</p>');
@@ -64,11 +76,11 @@
     const offers = PP.fan.offer(pool);
     let body;
     if (!offers || !offers.length) {
-      body = '<div class="card main"><b>Dream team complete! 🏆</b><p class="sub">Every player in this group is already on your team, or worse than the ones you have. Try the other team.</p></div>';
+      body = '<div class="card main"><b>Collection complete! 🏆</b><p class="sub">You have collected every player in this group. Try the other team.</p></div>';
     } else {
       body = '<p class="sub">Pick one player. The better the quality of your practice, the better the choices.</p><div class="offers">' + offers.map(p => {
-        const tg = PP.fan.target(pool, p);
-        const info = tg.old ? 'Replaces ' + tg.old.name + ' (' + tg.old.r + ')' : 'Fills an empty ' + slotLabel(tg.slot) + ' spot';
+        const sl = PP.fan.nextSlot(pool, p.pos);
+        const info = sl ? 'Starts as ' + PP.slotName(sl).toLowerCase() : 'Lineup full here: goes to your collection';
         return '<div class="offer">' + card(p, false) + '<small class="mute">' + info + '</small><button class="go" data-a="draftPick" data-v="' + p.id + '">Draft</button></div>';
       }).join('') + '</div>';
     }
@@ -79,8 +91,8 @@
     if (!tg) return draft();
     const left = D().fan.picks.length;
     U.confetti();
-    set('<h1>Welcome to the team! 🎉</h1><p class="sub">' + p.name + ' joins ' + esc(PP.fan.team(pool).name) + ' as ' + slotLabel(tg.slot).toLowerCase() + (tg.old ? ', replacing ' + tg.old.name : '') + '.</p><div class="reveal">' + card(p, false) + '</div><div class="menu">' +
-      (left ? '<button class="go" data-a="draft">Draft again (' + left + ' left)</button>' : '') + '<button class="ghost wide" data-a="fantasy">See my team</button>' + (R ? '<button class="ghost wide" data-a="cont">' + (R.from === 'mock' ? 'Home' : 'Keep practicing') + '</button>' : '<button class="ghost wide" data-a="home">Home</button>') + '</div>');
+    set('<h1>Welcome to the team! 🎉</h1><p class="sub">' + p.name + ' joins ' + esc(PP.fan.team(pool).name) + (tg.slot ? ' as ' + PP.slotName(tg.slot).toLowerCase() : ' in your collection. The lineup spots for his position are full, so swap him in from your lineup') + '.</p><div class="reveal">' + card(p, false) + '</div><div class="menu">' +
+      (left ? '<button class="go" data-a="draft">Draft again (' + left + ' left)</button>' : '') + '<button class="ghost wide" data-a="fantasy">See my lineup</button>' + (R ? '<button class="ghost wide" data-a="cont">' + (R.from === 'mock' ? 'Home' : 'Keep practicing') + '</button>' : '<button class="ghost wide" data-a="home">Home</button>') + '</div>');
   }
 
   /* ---------------- rewards after a session or test ---------------- */
@@ -227,7 +239,10 @@
 
   Object.assign(A, {
     collection, colPool: v => { cv.pool = v; collection(); }, colPos: v => { cv.pos = v; collection(); },
-    fantasy, fantasyHome: () => { R = null; fantasy(); }, draft, draftPick, fanPool: v => { fs.pool = v; fantasy(); }, draftPool: v => { fs.pool = v; draft(); },
+    fantasy, fantasyHome: () => { R = null; ed = null; fantasy(); }, draft, draftPick, fanPool: v => { fs.pool = v; ed = null; fantasy(); },
+    slotPick: v => { ed = ed === v ? null : v; fantasy(); const el = document.getElementById('picker'); if (el) el.scrollIntoView({ block: 'center' }); },
+    slotSet: id => { if (ed) PP.fan.place(fs.pool, ed, id); ed = null; fantasy(); },
+    slotClear: () => { if (ed) PP.fan.clear(fs.pool, ed); ed = null; fantasy(); }, slotClose: () => { ed = null; fantasy(); }, draftPool: v => { fs.pool = v; draft(); },
     sessionDone, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
     shootout, shoot, memory, memFlip,
     mistakes, missFilter: v => { mv.f = v; mv.page = 0; mv.open = null; mistakes(); }, missSec: v => { mv.sec = v; mv.page = 0; mv.open = null; mistakes(); },
