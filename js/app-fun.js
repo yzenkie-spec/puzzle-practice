@@ -34,9 +34,26 @@
     set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">🏆 Fantasy teams</span></div><h1>My fantasy teams</h1>' + poolTabs('fanPool') +
       '<div class="card"><label class="mute" for="tname">Team name</label><input id="tname" class="tname" maxlength="24" value="' + esc(tm.name) + '"><div class="lvh"><b>Team rating</b><span>' + (rt.n ? rt.avg : '–') + ' · ' + rt.n + ' of 6 players</span></div>' + U.bar(rt.avg) + '<small class="mute">' + PP.POOL_ICON[other] + ' ' + esc(PP.fan.team(other).name) + ': ' + (ro.n ? ro.avg : '–') + ' (' + ro.n + ' of 6)</small></div>' +
       lineup(pool) +
-      (pk ? '<button class="go" data-a="draft">Draft a player (' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready)</button>' : '<div class="card main"><b>No draft picks yet</b><p class="sub">Finish 10 practice questions to earn a pick. Get 8 or more right for a bonus pick. A mock test earns 3 or more.</p></div>') +
+      '<button class="ghost wide" data-a="collection" style="margin-top:10px">📇 Player collection (' + Object.keys(d.fan.owned).length + ' collected)</button>' + (pk ? '<button class="go" data-a="draft">Draft a player (' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready)</button>' : '<div class="card main"><b>No draft picks yet</b><p class="sub">Finish 10 practice questions to earn a pick. Get 8 or more right for a bonus pick. A mock test earns 3 or more.</p></div>') +
       (hist ? '<h2>Recent picks</h2><div class="card"><ul class="weak">' + hist + '</ul></div>' : '') +
       '<p class="sub mute">Player ratings are made up for this game. Teams are as of the 2025-26 season.</p>');
+  }
+
+  /* ---------------- collection: every player he has drafted ---------------- */
+  let cv = { pool: 'cur', pos: 'all' };
+  function collection() {
+    U.stop();
+    const d = D(), list = PP.NHL[cv.pool].slice().sort((a, b) => b.r - a.r);
+    const have = list.filter(p => d.fan.owned[p.id]).length;
+    const shown = list.filter(p => cv.pos === 'all' || p.pos === cv.pos);
+    const tabs = '<div class="tabs">' + ['cur', 'all'].map(p => '<button class="tab' + (cv.pool === p ? ' on' : '') + '" data-a="colPool" data-v="' + p + '">' + PP.POOL_ICON[p] + ' ' + PP.POOL_NAME[p] + '</button>').join('') + '</div>';
+    const chips = '<div class="chips2">' + ['all', 'C', 'LW', 'RW', 'D', 'G'].map(x => '<button class="chip' + (cv.pos === x ? ' on' : '') + '" data-a="colPos" data-v="' + x + '">' + (x === 'all' ? 'All' : x) + '</button>').join('') + '</div>';
+    const cells = shown.map(p => {
+      if (d.fan.owned[p.id]) return '<div class="cc">' + card(p, true) + (PP.fan.onTeam(cv.pool, p.id) ? '<small class="good">On my team</small>' : '<small class="mute">Collected</small>') + '</div>';
+      return '<div class="cc"><div class="pc mini locked t-' + PP.tier(p.r) + '"><span class="q">❔</span><b>???</b><span class="pos">' + p.pos + '</span><small>' + PP.TIER_NAME[PP.tier(p.r)] + '</small></div><small class="mute">Not collected</small></div>';
+    }).join('');
+    set('<div class="top"><button class="ghost" data-a="fantasy">My team</button><span class="mute">📇 Collection</span></div><h1>Player collection</h1>' + tabs +
+      '<div class="card"><div class="lvh"><b>Collected</b><span>' + have + ' of ' + list.length + '</span></div>' + U.bar(have / list.length * 100) + '<small class="mute">Draft players to fill the collection. Every player you draft stays here, even if you later swap him off your team.</small></div>' + chips + '<div class="cgrid">' + cells + '</div>');
   }
 
   /* ---------------- draft ---------------- */
@@ -209,6 +226,7 @@
   }
 
   Object.assign(A, {
+    collection, colPool: v => { cv.pool = v; collection(); }, colPos: v => { cv.pos = v; collection(); },
     fantasy, fantasyHome: () => { R = null; fantasy(); }, draft, draftPick, fanPool: v => { fs.pool = v; fantasy(); }, draftPool: v => { fs.pool = v; draft(); },
     sessionDone, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
     shootout, shoot, memory, memFlip,

@@ -12,7 +12,7 @@
 
   const freshTeam = name => ({ name, slots: { LW: null, C: null, RW: null, D1: null, D2: null, G: null } });
   const fresh = () => ({ v: 3, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
-    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, fan: { picks: [], offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
+    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
@@ -27,6 +27,11 @@
   } catch (e) {}
   if (D.cur) D.cur.subs.forEach(s => { s.end = 0; });
   if (!D.ask) D.ask = {};
+  if (!D.fan.owned) {   // everyone drafted so far belongs in the collection
+    D.fan.owned = {};
+    ['cur', 'all'].forEach(p => Object.keys(D.fan.teams[p].slots).forEach(k => { if (D.fan.teams[p].slots[k]) D.fan.owned[D.fan.teams[p].slots[k]] = 1; }));
+    (D.fan.hist || []).forEach(h => { D.fan.owned[h.id] = 1; if (h.old) D.fan.owned[h.old] = 1; });
+  }
   PP.D = () => D;
   PP.save = () => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) {} };
   PP.reset = () => { D = fresh(); PP.save(); };
@@ -296,7 +301,7 @@
       const p = PP.NHL_BY_ID[id];
       if (!D.fan.picks.length || !PP.fan.eligible(pool, p)) return null;
       const tg = PP.fan.target(pool, p);
-      team(pool).slots[tg.slot] = p.id;
+      team(pool).slots[tg.slot] = p.id; D.fan.owned[p.id] = 1;
       D.fan.picks.shift(); D.fan.offer = {};
       D.fan.hist.unshift({ pool, id: p.id, old: tg.old ? tg.old.id : null, ts: Date.now() });
       D.fan.hist = D.fan.hist.slice(0, 40);
