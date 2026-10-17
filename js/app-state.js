@@ -10,7 +10,9 @@
   const DAILY_GOAL = 20 * 60;
   PP.NEED = NEED; PP.FOCUS_NEED = FOCUS_NEED; PP.MOCK_SECONDS = MOCK_SECONDS; PP.PER_LEVEL = PER_LEVEL; PP.DAILY_GOAL = DAILY_GOAL;
 
-  const fresh = () => ({ v: 3, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1 });
+  const freshTeam = name => ({ name, slots: { LW: null, C: null, RW: null, D1: null, D2: null, G: null } });
+  const fresh = () => ({ v: 3, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
+    miss: {}, sess: { n: 0, ok: 0 }, fan: { picks: [], offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
@@ -54,7 +56,7 @@
   PP.tagStat = (code, tag) => D.tag[tkey(code, tag)];
 
   /* record one answered question (practice, focus or mock) */
-  PP.record = function (q, ok, secs, mode) {
+  PP.record = function (q, ok, secs, mode, pick) {
     D.used[q.id] = (D.used[q.id] || 0) + 1;
     const k = tkey(q.sec, q.tag), t = D.tag[k] || (D.tag[k] = { n: 0, c: 0, s: 0.35 });
     t.n++; if (ok) t.c++;
@@ -62,7 +64,23 @@
     D.log.push([Date.now(), q.sec, q.lv, ok ? 1 : 0, Math.round(secs || 0), mode]);
     if (D.log.length > 6000) D.log.splice(0, D.log.length - 6000);
     if (ok) D.stars++;
+    else PP.addMiss(q, pick);
     PP.markDay();
+  };
+  /* mistakes notebook */
+  PP.addMiss = function (q, pick) {
+    const m = D.miss[q.id] || (D.miss[q.id] = { n: 0, u: 0 });
+    m.n++; m.ts = Date.now(); m.u = 0; m.pick = (pick === undefined ? null : pick);
+  };
+  PP.setUnderstood = (id, v) => { if (D.miss[id]) { D.miss[id].u = v ? 1 : 0; PP.save(); } };
+  PP.missList = function (filter, sec) {
+    return Object.keys(D.miss).map(id => ({ id, m: D.miss[id] }))
+      .filter(x => (sec === 'all' || x.id.split('-')[0] === sec) && (filter === 'all' || (filter === 'open' ? !x.m.u : !!x.m.u)))
+      .sort((a, b) => b.m.ts - a.m.ts);
+  };
+  PP.missCounts = function () {
+    const ids = Object.keys(D.miss), open = ids.filter(i => !D.miss[i].u).length;
+    return { all: ids.length, open, done: ids.length - open };
   };
   PP.markUsed = q => { D.used[q.id] = D.used[q.id] || 1; };
 
@@ -121,10 +139,11 @@
     const ok = pick === q.ans, st = PP.S(q.sec)[q.lv];
     const before = st.c >= NEED;
     if (ok) st.c++; else st.w++;
-    PP.record(q, ok, secs, 'p');
+    PP.record(q, ok, secs, 'p', pick);
     PP.addTime(Math.min(secs || 0, 120));
+    const sessionDone = PP.sessionAdd(ok);
     PP.save();
-    return { ok, levelPassed: !before && st.c >= NEED };
+    return { ok, levelPassed: !before && st.c >= NEED, sessionDone };
   };
 
   /* ---------- focus practice ---------- */
@@ -136,13 +155,14 @@
   PP.answerFocus = function (q, pick, secs) {
     const ok = pick === q.ans, n = D.focus.needs[q.sec];
     if (ok) n.got++;
-    PP.record(q, ok, secs, 'f');
+    PP.record(q, ok, secs, 'f', pick);
     PP.addTime(Math.min(secs || 0, 120));
+    const sessionDone = PP.sessionAdd(ok);
     const cleared = ok && n.got >= FOCUS_NEED;
     const allCleared = cleared && PP.focusLeft().length === 0;
     if (allCleared) D.focus = null;
     PP.save();
-    return { ok, cleared, allCleared };
+    return { ok, cleared, allCleared, sessionDone };
   };
 
   /* ---------- mock test ---------- */
@@ -181,7 +201,7 @@
     c.subs.forEach(s => {
       const items = s.ids.map((id, i) => {
         const q = PP.get(id), pick = s.picks[i], ok = pick === q.ans;
-        if (pick === null) PP.markUsed(q); else PP.record(q, ok, 0, 'm');
+        if (pick === null) { PP.markUsed(q); PP.addMiss(q, null); } else PP.record(q, ok, 0, 'm', pick);
         return { id, lv: q.lv, tag: q.tag, pick, ok, fu: s.fu ? s.fu[i] : 0 };
       });
       test.subs.push({ code: s.code, items, score: items.filter(x => x.ok).length });
@@ -204,6 +224,82 @@
 
   PP.testTotal = t => t.subs.reduce((s, x) => s + x.score, 0);
   PP.testCount = t => t.subs.reduce((s, x) => s + x.items.length, 0);
+
+  /* ---------- sessions, rewards and the fantasy draft ---------- */
+  const SESSION = 10;
+  PP.SESSION = SESSION;
+  PP.sessionAdd = ok => { D.sess.n++; if (ok) D.sess.ok++; return D.sess.n >= SESSION; };
+  PP.addPicks = function (count, q) { for (let i = 0; i < count; i++) D.fan.picks.push(q || 0); PP.save(); };
+  /* every 10 practice questions = 1 pick; 80% right = a second pick */
+  PP.claimSession = function () {
+    const n = D.sess.n, ok = D.sess.ok, acc = n ? ok / n : 0;
+    const picks = 1 + (acc >= 0.8 ? 1 : 0), q = acc >= 0.9 ? 2 : acc >= 0.7 ? 1 : 0;
+    D.sess = { n: 0, ok: 0 };
+    PP.addPicks(picks, q);
+    return { n, ok, picks, q };
+  };
+  PP.mockReward = function (test) {
+    const pct = PP.testTotal(test) / PP.testCount(test);
+    const picks = 3 + (pct >= 0.7 ? 1 : 0) + (pct >= 0.9 ? 1 : 0), q = pct >= 0.9 ? 2 : pct >= 0.7 ? 1 : 0;
+    test.rw = picks; PP.addPicks(picks, q);
+    return { picks, q };
+  };
+  const BASE = { common: 1, rare: 0.6, epic: 0.3, legend: 0.12 };
+  const BOOST = [{ common: 1, rare: 1, epic: 1, legend: 1 }, { common: 1, rare: 1.5, epic: 2, legend: 3 }, { common: 1, rare: 2.5, epic: 4, legend: 7 }];
+  const slotsFor = pos => PP.SLOTS.filter(s => PP.SLOT_POS[s] === pos);
+  const team = pool => D.fan.teams[pool];
+  PP.fan = {
+    team,
+    onTeam: (pool, id) => PP.SLOTS.some(s => team(pool).slots[s] === id),
+    /* can this player fill an empty slot or beat the weakest player at his position? */
+    eligible(pool, p) {
+      if (PP.fan.onTeam(pool, p.id)) return false;
+      const ss = slotsFor(p.pos), t = team(pool).slots;
+      if (ss.some(s => !t[s])) return true;
+      return p.r > Math.min.apply(null, ss.map(s => PP.NHL_BY_ID[t[s]].r));
+    },
+    target(pool, p) {   // slot the player would take
+      const ss = slotsFor(p.pos), t = team(pool).slots;
+      const empty = ss.find(s => !t[s]);
+      if (empty) return { slot: empty, old: null };
+      const low = ss.slice().sort((a, b) => PP.NHL_BY_ID[t[a]].r - PP.NHL_BY_ID[t[b]].r)[0];
+      return { slot: low, old: PP.NHL_BY_ID[t[low]] };
+    },
+    offer(pool) {   // three players to choose from, saved so a reload gives the same choices
+      if (!D.fan.picks.length) return null;
+      const saved = D.fan.offer[pool];
+      if (saved && saved.length && saved.every(id => PP.fan.eligible(pool, PP.NHL_BY_ID[id]))) return saved.map(id => PP.NHL_BY_ID[id]);
+      const q = D.fan.picks[0], t = team(pool).slots;
+      const needPos = {}; PP.SLOTS.forEach(s => { if (!t[s]) needPos[PP.SLOT_POS[s]] = 1; });
+      let cand = PP.NHL[pool].filter(p => PP.fan.eligible(pool, p));
+      const out = [];
+      while (out.length < 3 && cand.length) {
+        const w = cand.map(p => { const tr = PP.tier(p.r); return BASE[tr] * BOOST[q][tr] * (needPos[p.pos] ? 2 : 1); });
+        let x = Math.random() * w.reduce((a, b) => a + b, 0), i = 0;
+        while (i < cand.length - 1 && (x -= w[i]) > 0) i++;
+        out.push(cand[i]); cand = cand.filter((_, j) => j !== i);
+      }
+      D.fan.offer[pool] = out.map(p => p.id); PP.save();
+      return out;
+    },
+    draft(pool, id) {
+      const p = PP.NHL_BY_ID[id];
+      if (!D.fan.picks.length || !PP.fan.eligible(pool, p)) return null;
+      const tg = PP.fan.target(pool, p);
+      team(pool).slots[tg.slot] = p.id;
+      D.fan.picks.shift(); D.fan.offer = {};
+      D.fan.hist.unshift({ pool, id: p.id, old: tg.old ? tg.old.id : null, ts: Date.now() });
+      D.fan.hist = D.fan.hist.slice(0, 40);
+      PP.save();
+      return tg;
+    },
+    rating(pool) {
+      const ids = PP.SLOTS.map(s => team(pool).slots[s]).filter(Boolean);
+      return { n: ids.length, avg: ids.length ? Math.round(ids.reduce((a, id) => a + PP.NHL_BY_ID[id].r, 0) / ids.length) : 0 };
+    },
+    complete: pool => PP.NHL[pool].every(p => !PP.fan.eligible(pool, p)),
+    setName(pool, name) { team(pool).name = String(name).slice(0, 24); PP.save(); }
+  };
 
   /* ---------- numbers for the tracker ---------- */
   PP.totals = function () {

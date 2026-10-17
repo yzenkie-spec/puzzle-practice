@@ -100,23 +100,57 @@ svg.pfsteps{display:block;width:100%;max-width:520px;margin:10px auto 0}
 .confetti span{position:absolute;top:-40px;animation:fall 2.6s ease-in forwards}
 @keyframes fall{to{transform:translateY(110vh) rotate(360deg);opacity:.9}}
 @media (prefers-reduced-motion:reduce){.confetti{display:none}}
+.pill{display:inline-block;background:var(--brand);color:var(--on-brand);border-radius:999px;padding:0 9px;font-size:15px;font-weight:800;margin-left:4px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.tab{flex:1;min-width:120px;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:10px 12px;min-height:48px;font-weight:800}
+.tab.on{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.chips2{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+.chip{background:var(--card);border:2px solid var(--line);border-radius:999px;padding:4px 12px;min-height:42px;font-size:20px}
+.chip.on{border-color:var(--brand);background:var(--sel)}
+.tile.miss{margin:8px 0}.tile.miss.got{opacity:.8}
+.tname{width:100%;font:700 22px Fredoka,system-ui,sans-serif;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:8px 12px;margin:4px 0 10px}
+.pc{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--card);border:3px solid var(--line);border-radius:16px;padding:10px 8px 8px;text-align:center;min-width:0}
+.pc b{font:700 17px/1.15 Fredoka,system-ui,sans-serif}
+.pc .jersey{width:64px;height:64px}
+.pc .pos{position:absolute;top:6px;left:6px;font-size:13px;font-weight:800;background:var(--sel);border-radius:8px;padding:0 7px}
+.pc .rt{position:absolute;top:6px;right:6px;font:700 20px Fredoka,system-ui,sans-serif}
+.pc.t-rare{border-color:#3B6FE0}.pc.t-epic{border-color:#8E44D6;background:linear-gradient(160deg,var(--card),rgba(142,68,214,.16))}
+.pc.t-legend{border-color:#E0A800;background:linear-gradient(160deg,var(--card),rgba(240,185,11,.3));box-shadow:0 0 14px rgba(240,185,11,.55)}
+.pc.mini b{font-size:14px}.pc.mini .jersey{width:48px;height:48px}.pc.mini{padding:8px 4px 6px}
+.pc.empty{border-style:dashed;min-height:96px;justify-content:center;color:var(--mute);font-weight:800}
+.lineup{background:linear-gradient(180deg,rgba(120,170,255,.22),rgba(120,170,255,.08));border:3px solid var(--line);border-radius:22px;padding:12px;margin:12px 0}
+.lrow{display:flex;justify-content:center;gap:10px;margin:8px 0}.slot{flex:1;max-width:210px;min-width:0}
+.offers{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:12px 0}
+.offer{display:flex;flex-direction:column;gap:6px}.offer .go{margin-top:2px;min-height:54px;font-size:21px}
+.reveal{max-width:260px;margin:14px auto}.reveal .pc b{font-size:22px}.reveal .jersey{width:96px;height:96px}
+.goalbox{position:relative;height:200px;margin:12px 0;border-radius:18px;border:6px solid #C8102E;border-bottom:0;border-radius:18px 18px 0 0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.65) 0 2px,transparent 2px 18px),repeating-linear-gradient(0deg,rgba(255,255,255,.65) 0 2px,transparent 2px 18px),#9fc4ee;overflow:hidden}
+.goalbox:after{content:'';position:absolute;left:0;right:0;bottom:0;height:14px;background:#e9f2ff;border-top:3px solid #9bb4d8}
+.gk{position:absolute;bottom:10px;z-index:1;left:50%;transform:translateX(-50%);font-size:60px;transition:left .35s ease-out}
+.aim{position:absolute;top:34%;left:50%;transform:translateX(-50%);font-size:46px}
+.shotmsg{min-height:34px;font:700 22px Fredoka,system-ui,sans-serif;text-align:center}
+.mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px auto;max-width:460px}
+.mc{aspect-ratio:1;font-size:40px;background:var(--card);border:3px solid var(--line);border-radius:16px}
+.mc.up{background:var(--sel);border-color:var(--brand)}.mc.ok{background:var(--okbg);border-color:var(--ok)}
+.go small{display:block;font:600 15px Nunito,system-ui,sans-serif;opacity:.9}
 @media (max-width:560px){h1{font-size:31px}.seq{font-size:30px}.q{font-size:22px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <main id="app"></main>
-<script src="js/core.js?v=3"></script>
-<script src="js/gen-quant.js?v=3"></script>
-<script src="js/gen-verbal.js?v=3"></script>
-<script src="js/data-sc-e.js?v=3"></script>
-<script src="js/data-sc-a.js?v=3"></script>
-<script src="js/data-sc-c.js?v=3"></script>
-<script src="js/figures.js?v=3"></script>
-<script src="js/gen-figure.js?v=3"></script>
-<script src="js/gen-fold.js?v=3"></script>
-<script src="js/app-state.js?v=3"></script>
-<script src="js/app-ui.js?v=3"></script>
+<script src="js/core.js?v=4"></script>
+<script src="js/gen-quant.js?v=4"></script>
+<script src="js/gen-verbal.js?v=4"></script>
+<script src="js/data-sc-e.js?v=4"></script>
+<script src="js/data-sc-a.js?v=4"></script>
+<script src="js/data-sc-c.js?v=4"></script>
+<script src="js/figures.js?v=4"></script>
+<script src="js/gen-figure.js?v=4"></script>
+<script src="js/gen-fold.js?v=4"></script>
+<script src="js/data-nhl.js?v=4"></script>
+<script src="js/app-state.js?v=4"></script>
+<script src="js/app-ui.js?v=4"></script>
+<script src="js/app-fun.js?v=4"></script>
 <script>PP.home();PP.warm();</script>
 </body>
 </html>
