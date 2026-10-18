@@ -9,7 +9,29 @@
   const num = team => { let h = 7; for (const ch of team) h = (h * 31 + ch.charCodeAt(0)) % 97; return h + 2; };
   const OUT = 'M46 6 L22 16 L4 62 L24 72 L30 56 L30 116 Q60 124 90 116 L90 56 L96 72 L116 62 L98 16 L74 6 Q60 20 46 6Z';
 
-  PP.jerseySvg = function (team, v) {
+  /* a cartoon face (not a likeness) made from the player id: skin, hair, style and sometimes a beard */
+  const SKIN = ['#F6D2B0', '#EDBB92', '#D9A074', '#B97B50', '#8D5A3A', '#6B4128'];
+  const HAIR = ['#2B1B10', '#4A2E18', '#8A5A2B', '#C9A05A', '#E6C98A', '#7A7A7A', '#B5472B'];
+  const hash = str => { let h = 5381; for (const ch of String(str)) h = ((h << 5) + h + ch.charCodeAt(0)) >>> 0; return h; };
+  function head(seed) {
+    const h = hash(seed), skin = SKIN[h % 6], hair = HAIR[(h >> 3) % 7], style = (h >> 6) % 5, beard = ((h >> 9) % 4) === 0, shade = mix(skin, '#000000', 0.16);
+    const hairBack = style === 3 ? '<path d="M41 -4 Q38 24 46 16 L74 16 Q82 24 79 -4Z" fill="' + hair + '" stroke="#111" stroke-width="1.6"/>' : '';
+    const top = [
+      '<path d="M43 -12 Q44 -33 60 -33 Q76 -33 77 -12 Q72 -21 60 -21 Q48 -21 43 -12Z" fill="' + hair + '" stroke="#111" stroke-width="1.6"/>',
+      '<path d="M42 -8 Q40 -34 60 -34 Q80 -34 78 -8 Q75 -24 62 -22 Q50 -26 42 -8Z" fill="' + hair + '" stroke="#111" stroke-width="1.6"/>',
+      '<path d="M44 -14 Q46 -30 60 -30 Q74 -30 76 -14 Q60 -26 44 -14Z" fill="' + hair + '" stroke="#111" stroke-width="1.4"/>',
+      '<path d="M42 -6 Q38 -35 60 -35 Q82 -35 78 -6 Q70 -22 60 -22 Q50 -22 42 -6Z" fill="' + hair + '" stroke="#111" stroke-width="1.6"/>',
+      '<path d="M41 -10 Q42 -32 60 -33 Q78 -32 79 -10 Q70 -26 56 -24 Q46 -22 41 -10Z" fill="' + hair + '" stroke="#111" stroke-width="1.6"/><path d="M44 -20 Q54 -30 70 -26" stroke="' + mix(hair, '#ffffff', .35) + '" stroke-width="1.4" fill="none"/>'
+    ][style];
+    return hairBack + '<rect x="52" y="-2" width="16" height="20" fill="' + shade + '"/>' +
+      '<ellipse cx="42.5" cy="-8" rx="3.2" ry="4.4" fill="' + skin + '" stroke="#111" stroke-width="1.4"/><ellipse cx="77.5" cy="-8" rx="3.2" ry="4.4" fill="' + skin + '" stroke="#111" stroke-width="1.4"/>' +
+      '<ellipse cx="60" cy="-9" rx="17" ry="20" fill="' + skin + '" stroke="#111" stroke-width="1.8"/>' + top +
+      '<circle cx="53.5" cy="-8" r="2" fill="#14181F"/><circle cx="66.5" cy="-8" r="2" fill="#14181F"/><circle cx="54.2" cy="-8.7" r=".6" fill="#fff"/><circle cx="67.2" cy="-8.7" r=".6" fill="#fff"/>' +
+      '<path d="M50.5 -13.5 Q53.5 -15 56.5 -13.5 M63.5 -13.5 Q66.5 -15 69.5 -13.5" stroke="' + hair + '" stroke-width="1.5" fill="none" stroke-linecap="round"/>' +
+      '<path d="M59 -6 Q60 -3 61.2 -3.4" stroke="' + shade + '" stroke-width="1.2" fill="none" stroke-linecap="round"/>' +
+      (beard ? '<path d="M44 -2 Q46 14 60 14 Q74 14 76 -2 Q70 6 60 5 Q50 6 44 -2Z" fill="' + hair + '" opacity=".9"/><path d="M54 3 Q60 6 66 3" stroke="#111" stroke-width="1.3" fill="none" stroke-linecap="round"/>' : '<path d="M53.5 3.5 Q60 8.5 66.5 3.5" stroke="#8A3A2A" stroke-width="1.7" fill="none" stroke-linecap="round"/>');
+  }
+  PP.jerseySvg = function (team, v, who) {
     const c = PP.TEAMS[team] || ['#555555', '#ffffff'], id = 'j' + (++uid);
     const p = c[0], s = c[1];
     const white = '#F7F7F2', cream = '#F1E6C8', ink = '#14181F';
@@ -49,11 +71,11 @@
     const sleeveNum = [['17', '-22'], ['103', '22']].map(a => '<text x="0" y="0" transform="translate(' + a[0] + ' 40) rotate(' + a[1] + ')" text-anchor="middle" font-size="14" font-weight="700" font-family="Teko,Impact,sans-serif" fill="' + nf + '" stroke="' + ns + '" stroke-width="1.6" paint-order="stroke">' + n + '</text>').join('');
     const fx = '<rect x="0" y="0" width="120" height="130" fill="url(#' + id + 'g)"/><rect x="0" y="0" width="120" height="130" fill="url(#' + id + 'm)"/>' +
       '<path d="M40 62 Q44 90 38 116 M80 62 Q76 90 82 116 M60 40 L60 110" stroke="#000" stroke-opacity=".07" stroke-width="3" fill="none"/>';
-    return '<svg class="jersey" viewBox="0 0 120 130" aria-hidden="true"><defs>' +
+    return '<svg class="jersey' + (who ? ' headed' : '') + '" viewBox="' + (who ? '0 -38 120 168' : '0 0 120 130') + '" aria-hidden="true"><defs>' +
       '<linearGradient id="' + id + 'g" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>' +
       '<pattern id="' + id + 'm" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r=".7" fill="#000" opacity=".13"/></pattern>' +
       '<clipPath id="' + id + 'c"><path d="' + OUT + '"/></clipPath></defs>' +
-      '<ellipse cx="60" cy="126" rx="38" ry="3" fill="#000" opacity=".12"/>' +
+      '<ellipse cx="60" cy="126" rx="38" ry="3" fill="#000" opacity=".12"/>' + (who ? head(who) : '') +
       '<path d="' + OUT + '" fill="' + body + '"/>' +
       '<g clip-path="url(#' + id + 'c)">' + yk + stripes + fx + '</g>' +
       '<path d="M30 56 L24 72 M90 56 L96 72" stroke="#000" stroke-opacity=".25" stroke-width="1.2"/>' +

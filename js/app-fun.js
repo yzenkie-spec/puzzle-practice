@@ -75,7 +75,7 @@
   });
   function card(p, mini) {
     const t = PP.tier(p.r), g = PP.fan.gearOf(p.id), jk = g.j ? g.j.split('|') : null, st = g.s ? PP.STICK_BY_ID[g.s] : null;
-    const jsvg = jk ? PP.jerseySvg(jk[0], jk[1]) : jersey(p.team);
+    const jsvg = PP.jerseySvg(jk ? jk[0] : p.team, jk ? jk[1] : 'e', p.id);
     return '<div class="pc t-' + t + (mini ? ' mini' : '') + '">' + jsvg + (st ? '<span class="gearstk">' + PP.stickSvg(st) + '</span>' : '') + (PP.fan.teamMatch(p.id) ? '<span class="match" title="Wearing his own team jersey">✨</span>' : '') + '<b>' + p.name + '</b><span class="pos">' + p.pos + '</span><span class="rt">' + p.r + '</span>' + (mini ? '' : '<small>' + PP.TIER_NAME[t] + '</small>') + '</div>';
   }
   let ed = null;   // lineup spot being edited
@@ -210,9 +210,10 @@
   const tv = { show: 'all' };
   function toons() {
     U.stop();
-    const o = D().toon.owned, shows = ['all'].concat(PP.TOONS.map(t => t.show).filter((s, i, a) => a.indexOf(s) === i));
-    const list = PP.TOONS.filter(t => tv.show === 'all' || t.show === tv.show), have = PP.TOONS.filter(t => o[t.id]).length;
-    const chips = '<div class="chips">' + shows.map(s => '<button class="chip' + (tv.show === s ? ' on' : '') + '" data-a="toonShow" data-v="' + s + '">' + (s === 'all' ? 'All' : s) + '</button>').join('') + '</div>';
+    const o = D().toon.owned, cnt = {}; PP.TOONS.forEach(t => { cnt[t.show] = (cnt[t.show] || 0) + 1; });
+    const big = s => cnt[s] >= 4, shows = ['all'].concat(Object.keys(cnt).filter(big), ['other']);
+    const list = PP.TOONS.filter(t => tv.show === 'all' || (tv.show === 'other' ? !big(t.show) : t.show === tv.show)), have = PP.TOONS.filter(t => o[t.id]).length;
+    const chips = '<div class="chips">' + shows.map(s => '<button class="chip' + (tv.show === s ? ' on' : '') + '" data-a="toonShow" data-v="' + s + '">' + (s === 'all' ? 'All' : s === 'other' ? 'Other shows' : s) + '</button>').join('') + '</div>';
     const cells = list.map(t => o[t.id] ? '<div class="cc">' + toonCard(t, o[t.id], true) + '</div>' : '<div class="cc"><div class="pc locked tc mini"><div class="temoji" style="background:#9aa3b2">❓</div><b>???</b><span class="pos">' + t.show + '</span></div></div>').join('');
     set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">🎭 Cartoons</span></div><h1>Cartoon collection</h1>' +
       '<div class="card"><div class="lvh"><b>Collected</b><span>' + have + ' of ' + PP.TOONS.length + '</span></div>' + U.bar(have / PP.TOONS.length * 100) + '<small class="mute">Get 5 right in a row, in any practice or test, to win a character.</small></div>' + chips + '<div class="cgrid">' + cells + '</div>');
