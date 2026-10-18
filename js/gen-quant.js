@@ -144,6 +144,17 @@
     else if (k === 'tri') { const x = ri(r, 2, 10), y = ri(r, 2, 10); if (x === y) return null; const n = x + y; stem = '<p class="q">What number is ●?</p><p class="seq">▲ + ▲ = ' + (2 * x) + '<br>▲ + ● = ' + n + '</p>'; ans = y; exp = '▲ = ' + x + ', because ' + x + ' + ' + x + ' = ' + (2 * x) + '. Then ' + x + ' + ● = ' + n + ', so ● = ' + y + '.'; extra = [x, n, 2 * x]; }
     if (!Number.isInteger(ans) || ans < 0) return null;
     const w = numOpts(r, ans, extra, 0);
+    // teaching explanation: say WHY the step works, then let the child check the answer by putting it back in the box
+    const WHY = {
+      'a+x=b': 'Adding and taking away are opposites, so take the part you know away from the total.', 'x+a=b': 'Adding and taking away are opposites, so take the part you know away from the total.',
+      'b-x=a': 'The box is the amount that was taken away, so subtract what is left from the start.', 'x-a=b': 'Taking away and adding are opposites, so add the amount back on.',
+      'x*a=b': 'Multiplying and dividing are opposites, so divide to undo the multiplication.', 'b/x=a': 'The box multiplied by the answer on the right makes the first number, so divide the first number by that answer.',
+      'x/a=b': 'Dividing and multiplying are opposites, so multiply to undo the division.', 'x+x=n': 'Both boxes hold the same number, so split the total into two equal parts.',
+      'x+x+x=n': 'All three boxes hold the same number, so split the total into three equal parts.', 'a-x=b': 'Find how much was taken away by subtracting what is left from the start.'
+    };
+    if (WHY[k]) exp = WHY[k] + ' ' + exp;
+    const seq = /<p class="seq">(.*?)<\/p>/.exec(stem);
+    if (seq && seq[1].indexOf(E) >= 0 && !/<br>/.test(seq[1])) exp += ' Check: ' + seq[1].split(E).join(String(ans)) + ' ✓';
     return PP.mk(r, { stem, correct: ans, wrong: w, exp, key: stem, tag: k });
   };
 })();

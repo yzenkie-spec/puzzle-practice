@@ -194,7 +194,7 @@
     if (newly.length) delete D.ask[q.sec];   // the next level starts from its own first question
     PP.record(q, ok, secs, 'p', pick);
     PP.addTime(Math.min(secs || 0, 120));
-    const sessionDone = smart ? PP.sessionAdd(ok) : false;   // only smart practice counts toward a cartoon character
+    const sessionDone = smart ? PP.sessionAdd(ok && !noLevel) : false;   // only smart practice counts toward a cartoon character
     let jersey = null;   // every level passed (regular or smart) = 1 team jersey; easy = home, average = away, challenging = retro
     if (newly.length) jersey = PP.winJersey(newly[newly.length - 1]);
     const pickWon = !smart && newly.length > 0;               // regular practice: each level passed = 1 draft pick
@@ -209,9 +209,9 @@
     const n = D.focus.needs[code];
     return PP.pickQ(code, n.lv, { tag: twin, tags: n.tags });
   };
-  PP.answerFocus = function (q, pick, secs) {
+  PP.answerFocus = function (q, pick, secs, helped) {
     const ok = pick === q.ans, n = D.focus.needs[q.sec];
-    if (ok) n.got++;
+    if (ok && !helped) n.got++;   // an answer made with the 2-answer-removed hint does not count
     PP.record(q, ok, secs, 'f', pick);
     PP.addTime(Math.min(secs || 0, 120));
     const sessionDone = false;

@@ -147,7 +147,33 @@
     const sess = (P.fromMiss || !P.smart ? '' : '<small class="mute">🏒 ' + Math.min(d.sess.n, PP.SESSION) + ' of ' + PP.SESSION + ' questions to a cartoon character (get 8 right)</small>');
     const harder = (P.mode === 'practice' && !P.isTwin && !P.fromMiss && PP.LEVELS.indexOf(q.lv) > PP.LEVELS.indexOf(PP.curLevel(q.sec))) ? '<div class="note">⬆️ Harder question! You got the last one right, so you moved up.</div>' : '';
     const note = sess + harder + (P.isTwin ? '<div class="note">🔁 Same kind of puzzle as the last one. You can do it!</div>' : '') + (P.repeat ? '<div class="note">♻️ You have done all the fresh questions at this level, so this one is a repeat.</div>' : '');
-    set('<div class="top"><button class="ghost" data-a="' + back + '" data-v="' + q.sec + '">' + (back === 'home' ? 'Home' : 'Back') + '</button><span class="mute">' + top + '</span></div>' + bar(prog) + '<small class="mute">' + txt + '</small>' + note + qHTML(q, null, false) + '<div id="fb"></div>');
+    set('<div class="top"><button class="ghost" data-a="' + back + '" data-v="' + q.sec + '">' + (back === 'home' ? 'Home' : 'Back') + '</button><span class="mute">' + top + '</span></div>' + bar(prog) + '<small class="mute">' + txt + '</small>' + note + qHTML(q, null, false) + '<div id="hintbox"></div><button class="ghost wide" id="hintbtn" data-a="hint">💡 Need a hint?</button><div id="fb"></div>');
+    P.hint = 0;
+  }
+  const HINT = {
+    VA: 'Say how the first two words are connected in a sentence, like "A is to B because ...". Then use the same connection for the second pair.',
+    SC: 'Read the sentence without the blank first. What kind of word is missing? Then try each choice in the sentence and listen for the one that makes sense.',
+    VC: 'Ask: what do the words in the group have in common? Check each choice against that. The right one fits the group.',
+    NA: 'Work out what happens to the first number to get the second. Then do the exact same thing to the third number.',
+    NP: 'Use the opposite operation to find the missing number (+ and − are opposites, × and ÷ are opposites). Then put your answer back in the box to check.',
+    NS: 'Look at the jumps between the numbers. Are they the same every time, getting bigger, or switching back and forth?',
+    FM: 'Look across the rows and down the columns. What changes: shape, colour, size or number? Follow one change at a time.',
+    PF: 'Picture the paper unfolding one step at a time, going backwards. The holes copy across the fold line.',
+    FC: 'Cover the answers. What do the shapes in the group share? Then check each choice for that feature.'
+  };
+  function hint() {
+    if (!P || !P.q || P.done || !P.mode) return;
+    const q = P.q, box = document.getElementById('hintbox'), btn = document.getElementById('hintbtn');
+    P.hint = Math.min(2, (P.hint || 0) + 1);
+    if (P.hint === 1) {
+      box.innerHTML = '<div class="note">💡 <b>Hint:</b> ' + (HINT[q.sec] || 'Take your time and look at the pattern.') + '</div>';
+      btn.textContent = '💡 One more hint (removes 2 wrong answers)';
+    } else {
+      const wrong = q.opts.map((_, i) => i).filter(i => i !== q.ans), drop = PP.shuffle(Math.random, wrong).slice(0, 2);
+      drop.forEach(i => { const b = document.querySelector('#opts .opt[data-v="' + i + '"]'); if (b) { b.disabled = true; b.style.opacity = '.25'; } });
+      box.innerHTML += '<div class="note">✂️ Two wrong answers are crossed out. Answers with this hint do not count toward passing the level, so try the hint-free ones too!</div>';
+      btn.remove();
+    }
   }
   function pick(i) {
     i = +i;
@@ -157,10 +183,10 @@
       const q = P.q, ok = i === q.ans, secs = (Date.now() - P.t0) / 1000;
       let res, btn = 'Next question', act = 'next';
       if (P.mode === 'practice') {
-        res = PP.answerPractice(q, i, secs, P.smart, !!P.fromMiss);
+        res = PP.answerPractice(q, i, secs, P.smart, !!P.fromMiss || P.hint >= 2);
         if (res.levelPassed) { btn = 'Level passed!'; act = 'levelUp'; }
       } else {
-        res = PP.answerFocus(q, i, secs);
+        res = PP.answerFocus(q, i, secs, P.hint >= 2);
         if (res.allCleared) { btn = 'All done!'; act = 'focusDone'; }
         else if (res.cleared) { btn = 'Next puzzle type'; }
       }
@@ -171,6 +197,7 @@
         btn = ok ? 'I understand it now ✅' : 'Try another like it'; act = ok ? 'missUnderstood' : 'next';
         extra = '<button class="ghost wide" data-a="mistakes" style="margin-top:10px">Back to mistakes</button>';
       } else if (res.sessionDone && !res.levelPassed && !res.allCleared) { btn = 'Finish session 🎉'; act = 'sessionDone'; }
+      const hb = document.getElementById('hintbtn'); if (hb) hb.remove();
       document.getElementById('opts').outerHTML = optsHTML(q, i, true);
       document.getElementById('fb').innerHTML = '<div class="fb ' + (ok ? 'good' : 'bad') + '"><b>' + (ok ? rnd(CHEER) : rnd(TRY)) + '</b> ' + (ok ? '' : 'The right answer is ' + PP.LETTERS[q.ans] + '. ') + q.exp + '</div><button class="go" data-a="' + act + '">' + btn + '</button>' + extra;
       if (ok && (res.levelPassed || res.allCleared)) confetti();
@@ -348,7 +375,7 @@
     home, sec: secView, practice, smart, smartGo: () => { P.smart = true; nextPractice(); }, pick, next, levelUp, focusStart, focusDone,
     mockStart, mockResume, mockHub: () => mockHub(false), mockPart: v => mockPart(v), mockGo, mockFinishAll, mockDonePart,
     mockJump: v => mockGoTo(+v), mockPrev: () => mockGoTo(qi - 1), mockNext: () => mockGoTo(qi + 1),
-    review, reviewTest: v => reviewTest(v), rq: (v, w) => reviewTest(rv.id, v, +w), tracker, reset, resetLevels
+    hint, review, reviewTest: v => reviewTest(v), rq: (v, w) => reviewTest(rv.id, v, +w), tracker, reset, resetLevels
   };
   app.addEventListener('click', e => {
     const b = e.target.closest('[data-a]');
