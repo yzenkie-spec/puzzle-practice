@@ -111,6 +111,42 @@ with sync_playwright() as p:
     pg.reload(); pg.wait_for_selector('h1')
     check('R10 corrupt saved data: app still opens with a fresh start', ev("()=>Object.keys(PP.D().sec).length>=0"))
 
+    # R11: a save from before question bank 2 keeps levels and scores, and retires old history only for the rebuilt parts
+    ev("""()=>{ const d=JSON.parse(JSON.stringify(PP.D())); delete d.bank;
+      d.sec.FM={e:{c:10,w:2},a:{c:3,w:1},c:{c:0,w:0}};
+      d.used={'FM-e-3':2,'VA-a-1':1,'NS-e-4':1}; d.miss={'FC-a-2':{n:1,u:0,ts:1,pick:0},'NP-e-5':{n:1,u:0,ts:1,pick:1}};
+      d.tag={'FM|shape+fill':{n:3,c:1,s:0.5},'NS|add':{n:2,c:2,s:0.1}};
+      d.tests=[{id:1,date:'2026-10-10T00:00:00Z',subs:[{code:'FM',score:1,items:[{id:'FM-e-1',lv:'e',tag:'x',pick:0,ok:true}]},{code:'NS',score:1,items:[{id:'NS-e-1',lv:'e',tag:'add',pick:0,ok:true}]}]}];
+      d.cur={id:2,date:'2026-10-11T00:00:00Z',si:0,subs:[{code:'VC',ids:['VC-e-1'],fu:[0],picks:[2],left:100,done:true,started:true},{code:'NS',ids:['NS-e-2'],fu:[0],picks:[1],left:50,done:true,started:true}]};
+      localStorage.setItem('pp3',JSON.stringify(d)); }""")
+    pg.reload(); pg.wait_for_selector('h1')
+    r = ev("""()=>{ const d=PP.D(); return { bank:d.bank, lv:d.sec.FM.e.c, used:Object.keys(d.used).sort(), miss:Object.keys(d.miss),
+      tag:Object.keys(d.tag), oldFM:d.tests[0].subs[0].items[0].old||0, oldNS:d.tests[0].subs[1].items[0].old||0, score:PP.testTotal(d.tests[0]),
+      curVC:[d.cur.subs[0].picks[0], d.cur.subs[0].done], curNS:[d.cur.subs[1].picks[0], d.cur.subs[1].done] }; }""")
+    want = {'bank': 2, 'lv': 10, 'used': ['NS-e-4'], 'miss': ['NP-e-5'], 'tag': ['NS|add'], 'oldFM': 1, 'oldNS': 0, 'score': 2, 'curVC': [None, False], 'curNS': [1, True]}
+    check('R11 update keeps levels and scores, retires old history only for rebuilt parts', r == want, r)
+    pg.reload(); pg.wait_for_selector('h1')
+    check('R11b the update runs only once', ev("()=>PP.D().cur.subs[1].picks[0]") == 1)
+    ev("()=>{ PP.reset && PP.reset(); }")
+
+    # R12: word questions never offer a second right answer
+    r = ev("""()=>{ const bad=[];
+      for (const lv of PP.LEVELS) {
+        for (const q of PP.pool('VA',lv)) { const m=q.stem.match(/seq va">(.*?) → (.*?) : (.*?) → \\?/); if(!m){bad.push(q.id+' format'); continue;}
+          const ban=PP._vaAlso(m[3]); q.opts.forEach((o,i)=>{ if(i!==q.ans && ban.includes(o)) bad.push(q.id+' '+o); }); }
+        for (const q of PP.pool('VC',lv)) { const ban=PP._vcBelongs(q.tag); q.opts.forEach((o,i)=>{ if(i!==q.ans && ban.includes(o)) bad.push(q.id+' '+o); }); }
+      } return bad; }""")
+    check('R12 analogies and classifications never offer a word that also fits', r == [], r[:5])
+
+    # R13: figure parts are complete and varied
+    r = ev("""()=>{ const bad=[], need={FM:['shade','size','count','rot180','flip','rot90'], FC:['sides','curved','half','parts','insame','quarter','halfany','third']};
+      for (const s of ['FM','FC']) { const seen=new Set();
+        for (const lv of PP.LEVELS) { const pool=PP.pool(s,lv); if(pool.length!==100) bad.push(s+lv+' size '+pool.length);
+          pool.forEach(q=>{ q.tag.split('+').forEach(t=>seen.add(t)); if(new Set(q.opts).size!==5) bad.push(q.id+' repeated picture'); }); }
+        need[s].forEach(t=>{ if(!seen.has(t)) bad.push(s+' never asks '+t); }); }
+      return bad; }""")
+    check('R13 figure matrices and classification: 100 per level, 5 different pictures, every puzzle type used', r == [], r[:5])
+
     check('no page errors during all checks', errs == [], errs[:3])
     b.close()
 print('\n%d failed' % len(fails) if fails else '\nALL PASS')

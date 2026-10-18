@@ -33,6 +33,38 @@
     { lv: 'c', id: 'collect', pairs: P('fish:school,wolf:pack,bee:swarm,cow:herd,bird:flock,lion:pride,ship:fleet,star:galaxy'), exp: (a, b, c, d) => 'The group word for ' + a + ' is "' + b + '". The group word for ' + c + ' is "' + d + '".' },
     { lv: 'c', id: 'wholepart2', pairs: P('chapter:book,verse:poem,scene:play,note:song,link:chain,room:house,drop:ocean,cell:body,branch:tree,step:staircase'), exp: (a, b, c, d) => An(a) + ' is one part of ' + an(b) + '. ' + An(c) + ' is one part of ' + an(d) + '.' }
   ];
+  /* Words that would ALSO be a fair answer for a given third word, so they must never be offered as wrong choices.
+     Example: boxing → gloves : hockey → ?  The key is "stick", but hockey players wear gloves too. */
+  const ALSO = {
+    // use
+    knife: 'cut', scissors: 'slice',
+    // home
+    bird: 'tree', pig: 'barn', cow: 'pen', horse: 'barn,pen',
+    // part
+    wheel: 'bus,truck,bike', leaf: 'flower,plant', petal: 'plant,tree',
+    // cat
+    apple: 'tree,plant', rose: 'plant', robin: 'animal', trout: 'animal', oak: 'plant', truck: 'tool',
+    // worktool
+    farmer: 'shovel', gardener: 'hose', teacher: 'pen,book', tailor: 'scissors', barber: 'brush', carpenter: 'saw',
+    // workplace
+    doctor: 'laboratory', baker: 'kitchen', chef: 'bakery',
+    // source
+    cheese: 'cow', milk: 'hen',
+    // placeact
+    school: 'read,eat', kitchen: 'eat', stadium: 'watch,eat', theater: 'cheer,eat', library: 'learn', gym: 'swim', restaurant: 'cook',
+    // wear
+    watch: 'hand', ring: 'hand', glove: 'finger,wrist', mask: 'eyes', glasses: 'face', earring: 'head',
+    // sportgear
+    hockey: 'gloves', baseball: 'gloves', tennis: 'net', fishing: 'net',
+    // degree
+    cool: 'freezing', chilly: 'cold', warm: 'hot',
+    // grow
+    egg: 'insect,frog,butterfly,fish', acorn: 'tree,plant', seed: 'tree,oak,blossom', larva: 'butterfly', caterpillar: 'insect', sapling: 'oak,plant', bud: 'plant',
+    // wholepart2
+    verse: 'song', scene: 'book', note: 'poem', chapter: 'play'
+  };
+  const alsoFits = w => (ALSO[w] || '').split(',').filter(Boolean);
+  PP._vaAlso = alsoFits;
   const otherWords = (lv, fam) => {
     const w = [];
     FAM.filter(f => f.lv === lv && f !== fam).forEach(f => f.pairs.forEach(p => { w.push(p[0]); w.push(p[1]); }));
@@ -52,7 +84,11 @@
     if (lv === 'e') wrong = [A[1]].concat(PP.shuffle(r, sameB).slice(0, 1), PP.shuffle(r, oth).slice(0, 3), PP.shuffle(r, sameA).slice(0, 2));
     else if (lv === 'a') wrong = [A[1]].concat(PP.shuffle(r, sameB).slice(0, 2), PP.shuffle(r, oth).slice(0, 2), PP.shuffle(r, sameA).slice(0, 2));
     else wrong = [A[1]].concat(PP.shuffle(r, sameB).slice(0, 3), PP.shuffle(r, sameA).slice(0, 2), PP.shuffle(r, oth).slice(0, 2));
-    const stem = '<p class="q">Find the link between the first two words. Pick the word that goes in place of the ?</p><p class="seq">' + A[0] + ' is to ' + A[1] + ' as ' + C[0] + ' is to ?</p>';
+    const banned = alsoFits(C[0]);
+    wrong = wrong.filter(w => !banned.includes(w));
+    if (wrong.length < 4) wrong = wrong.concat(PP.shuffle(r, oth).filter(w => !banned.includes(w) && !wrong.includes(w)));
+    // written like the real test: dog → bark : mouse → ?
+    const stem = '<p class="q">The first two words go together. Pick the word that goes with the third word in the same way.</p><p class="seq va">' + A[0] + ' → ' + A[1] + ' : ' + C[0] + ' → ?</p>';
     return PP.mk(r, { stem, correct: C[1], wrong, exp: fam.exp(A[0], A[1], C[0], C[1]), key: A[0] + '|' + C[0] + '|' + fam.id, tag: fam.id });
   };
 
@@ -108,20 +144,54 @@
     { lv: 'c', n: 'hockey penalties', w: W('tripping,hooking,slashing,holding,boarding,roughing,interference,cross-checking') }
   ];
 
+  /* Related groups: wrong choices drawn from a related group are "near misses" (like the real test),
+     so the child has to think about the exact way the three words are alike. */
+  const GROUP = {
+    'fruits': 'food', 'vegetables': 'food',
+    'farm animals': 'animal', 'birds': 'animal', 'insects': 'animal',
+    'colors': 'look', 'shapes': 'look',
+    'clothes': 'home', 'furniture': 'home', 'body parts': 'home',
+    'tools': 'object', 'school supplies': 'object', 'musical instruments': 'object',
+    'vehicles': 'go', 'things at a hockey game': 'fun', 'cartoon characters': 'fun',
+    'things you read': 'thing', 'things that give light': 'feel', 'cold things': 'feel', 'sticky things': 'feel', 'loud things': 'feel',
+    'soft things': 'feel', 'sharp things': 'feel', 'hot things': 'feel',
+    'things with wheels': 'go', 'things that fly': 'go', 'things you wear on your feet': 'go',
+    'places to live': 'thing', 'sports': 'fun', 'NHL teams': 'fun',
+    'ways to move': 'verb', 'ways to speak': 'verb', 'ways to look': 'verb', 'ways to cook': 'verb', 'hockey penalties': 'verb',
+    'feelings': 'mind', 'kinds of weather': 'nature', 'landforms': 'nature', 'parts of a plant': 'nature', 'planets': 'nature',
+    'metals': 'stuff', 'units of length': 'stuff', 'punctuation marks': 'stuff', 'parts of a book': 'stuff'
+  };
+  /* Words from other groups that ALSO belong to a category, so they can never be a wrong choice for it. */
+  const BELONGS = {
+    'farm animals': 'duck,hen,turkey', 'tools': 'ruler,stapler,scissors', 'vehicles': 'coach,bike', 'musical instruments': 'whistle,horn',
+    'clothes': 'skates,boots,shoes', 'things that give light': 'lava,fireworks,stars', 'hot things': 'candle,fireworks,lightbulb,lamp,lantern,spotlight,headlight,streetlight,flashlight',
+    'cold things': 'igloo,ice', 'things you wear on your feet': 'roller skates,skateboard', 'loud things': 'airplane,helicopter,rocket,drone,whistle,fireworks', 'sharp things': 'skates,saw,chisel,scissors,icicle,star',
+    'soft things': 'slippers,socks,sweater,scarf,blanket,gum,snow,jam,marshmallow', 'things with wheels': 'skates,car,bus,truck,train,plane,airplane', 'things that fly': 'feather,bee,eagle,parrot',
+    'sticky things': 'popsicle', 'places to live': 'nest,hive,den', 'things you read': 'page,title,index,contents,glossary,cover',
+    'ways to move': 'dash,tripping,skip', 'metals': 'Mercury', 'ways to speak': 'hail', 'ways to cook': 'drizzle',
+    'parts of a book': 'leaf', 'parts of a plant': 'spine,page', 'units of length': 'stride', 'kinds of weather': 'steam,thunder'
+  };
+  const NEAR = { e: 1, a: 2, c: 3 };   // how many wrong choices come from a related group
+  PP._vcBelongs = n => (BELONGS[n] || '').split(',').filter(Boolean);
+
   PP.gens.VC = function (lv, r) {
     const cats = CAT.filter(c => c.lv === lv);
     const cat = pick(r, cats);
     const ws = PP.shuffle(r, cat.w);
     const three = ws.slice(0, 3), correct = ws[3];
+    const block = new Set(cat.w.concat(PP._vcBelongs(cat.n)));
     const others = [];
-    cats.filter(c => c !== cat).forEach(c => c.w.forEach(x => { if (!cat.w.includes(x)) others.push({ x, n: c.n }); }));
-    // one distractor per category so each wrong word comes from a different group
+    cats.filter(c => c !== cat).forEach(c => c.w.forEach(x => { if (!block.has(x)) others.push({ x, n: c.n }); }));
+    // one wrong word per category, near misses first
     const byCat = {};
     PP.shuffle(r, others).forEach(o => { if (!byCat[o.n]) byCat[o.n] = o.x; });
-    const wrong = Object.values(byCat).slice(0, 5);
+    const names = PP.shuffle(r, Object.keys(byCat));
+    const near = names.filter(n => GROUP[n] === GROUP[cat.n]), far = names.filter(n => GROUP[n] !== GROUP[cat.n]);
+    const chosen = near.slice(0, NEAR[lv]);
+    far.concat(near.slice(NEAR[lv])).forEach(n => { if (chosen.length < 4) chosen.push(n); });
+    const wrong = chosen.map(n => byCat[n]);
     const stem = '<p class="q">How are these three words alike? Pick the word that belongs with them.</p><p class="seq">' + three.join(', ') + '</p>';
-    const cap = cat.n;
-    return PP.mk(r, { stem, correct, wrong, exp: 'These words are all ' + cap + '. "' + correct + '" belongs in the group too.', key: three.slice().sort().join(','), tag: cat.n });
+    return PP.mk(r, { stem, correct, wrong, exp: 'These words are all ' + cat.n + '. "' + correct + '" belongs in the group too.', key: three.slice().sort().join(','), tag: cat.n });
   };
 
   /* ---------- Sentence Completion: written sentences in data-sc-*.js ---------- */

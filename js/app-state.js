@@ -11,12 +11,12 @@
   PP.NEED = NEED; PP.FOCUS_NEED = FOCUS_NEED; PP.MOCK_SECONDS = MOCK_SECONDS; PP.PER_LEVEL = PER_LEVEL; PP.DAILY_GOAL = DAILY_GOAL;
 
   const freshTeam = name => ({ name, slots: {} });
-  const fresh = () => ({ v: 3, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
+  const fresh = () => ({ v: 3, bank: 2, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
     miss: {}, ask: {}, sess: { n: 0, ok: 0 }, toon: { owned: {}, hist: [] }, jer: { owned: {} }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
-    if (r && r.v === 3) D = Object.assign(fresh(), r);
+    if (r && r.v === 3) { D = Object.assign(fresh(), r); if (!r.bank) D.bank = 1; }   // saves from before question bank 2
     else {
       const o = JSON.parse(localStorage.getItem(OLD));
       if (o && o.v === 2) {   // keep level progress from the first version; old mock tests used a different question bank
@@ -27,6 +27,18 @@
   } catch (e) {}
   if (D.cur) D.cur.subs.forEach(s => { s.end = 0; });
   if (!D.ask) D.ask = {};
+  /* Question bank 2 (Oct 2026): Verbal Analogies, Verbal Classification, Figure Matrices and Figure Classification
+     were rebuilt to match the real test. Their question numbers now point to new questions, so keep levels, stars
+     and past scores, but retire the old per-question history for those four parts. */
+  if ((D.bank || 1) < 2) {
+    const CHANGED = ['VA', 'VC', 'FM', 'FC'], gone = id => CHANGED.includes(String(id).split('-')[0]);
+    Object.keys(D.used || {}).forEach(id => { if (gone(id)) delete D.used[id]; });
+    Object.keys(D.miss || {}).forEach(id => { if (gone(id)) delete D.miss[id]; });
+    Object.keys(D.tag || {}).forEach(k => { if (['FM', 'FC'].includes(k.split('|')[0])) delete D.tag[k]; });
+    (D.tests || []).forEach(t => t.subs.forEach(s => { if (CHANGED.includes(s.code)) s.items.forEach(x => { x.old = 1; }); }));
+    if (D.cur) D.cur.subs.forEach(s => { if (CHANGED.includes(s.code)) { s.picks = s.ids.map(() => null); s.left = MOCK_SECONDS; s.done = false; s.started = false; } });
+    D.bank = 2;
+  }
   Object.keys(D.sec).forEach(c => {   // older versions banked credits for harder levels: clear any above the level in progress
     const L = ['e', 'a', 'c'], f = L.findIndex(l => !(D.sec[c][l] && D.sec[c][l].c >= NEED));
     if (f >= 0) L.slice(f + 1).forEach(l => { if (D.sec[c][l]) D.sec[c][l].c = 0; });

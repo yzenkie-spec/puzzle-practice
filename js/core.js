@@ -32,7 +32,7 @@
     { code: 'NA', name: 'Number Analogies', icon: '🔢', bat: 1, how: 'Find the rule in the number pairs. Use it on the last number.' },
     { code: 'NP', name: 'Number Puzzles', icon: '🧩', bat: 1, how: 'Find the missing number that makes the math true.' },
     { code: 'NS', name: 'Number Series', icon: '📈', bat: 1, how: 'Find the pattern. Pick the number that comes next.' },
-    { code: 'FM', name: 'Figure Matrices', icon: '🔲', bat: 2, how: 'Find the rule in the grid. Pick the figure that fits the empty box.' },
+    { code: 'FM', name: 'Figure Matrices', icon: '🔲', bat: 2, how: 'The top two boxes show a change. Make the same change to the bottom figure.' },
     { code: 'PF', name: 'Paper Folding', icon: '📄', bat: 2, how: 'The paper is folded and a hole is punched. Pick how it looks when unfolded.' },
     { code: 'FC', name: 'Figure Classification', icon: '🔷', bat: 2, how: 'Find how the three figures are alike. Pick the figure that is most like them.' }
   ];

@@ -23,7 +23,9 @@
     NP: { two: 'Two-shape puzzles', two2: 'Two-shape puzzles', tri: 'Shape puzzles' },
     VA: { sound: 'Animal sounds', opp: 'Opposites', young: 'Baby animals', use: 'Tools and their jobs', home: 'Animal homes', part: 'Parts of things', toon: 'Cartoon characters', sportplace: 'Where sports are played', cat: 'Kinds of things', worktool: 'Jobs and their tools', workplace: 'Jobs and places', syn: 'Words that mean the same', source: 'Where things come from', placeact: 'What you do in a place', wear: 'What you wear where', sportgear: 'Sports gear', degree: 'Stronger words', opp2: 'Harder opposites', grow: 'Growing up', measure: 'Measuring tools', collect: 'Group words', wholepart2: 'Part and whole' },
     PF: { V1: 'One fold in half', D1: 'One diagonal fold', VH: 'Two folds in half', VV: 'Two folds side by side', DA: 'Two diagonal folds' },
-    SC: { sentence: 'Fitting the right word' }
+    SC: { sentence: 'Fitting the right word' },
+    FM: { shade: 'Shading changes', size: 'Size changes', count: 'Number of figures changes', rot90: 'Quarter turns', rot180: 'Half turns', flip: 'Mirror flips', 'shade+size': 'Shading and size change', 'shade+count': 'Shading and number change', 'rot90+shade': 'Turn and shading', 'flip+size': 'Flip and size', 'flip+shade': 'Flip and shading', 'rot90+count': 'Turn and number', 'rot90+size': 'Turn and size', 'flip+count': 'Flip and number', 'rot180+shade': 'Half turn and shading' },
+    FC: { sides: 'Same number of sides', curved: 'Curved sides', half: 'Half shaded', parts: 'Same number of equal parts', insame: 'Same shape inside', quarter: 'One quarter shaded', halfany: 'Half shaded in different ways', third: 'One third shaded' }
   };
   function tagLabel(code, tag) {
     if (TAGS[code] && TAGS[code][tag]) return TAGS[code][tag];
@@ -151,15 +153,15 @@
     P.hint = 0;
   }
   const HINT = {
-    VA: 'Say how the first two words are connected in a sentence, like "A is to B because ...". Then use the same connection for the second pair.',
+    VA: 'The arrow means "goes with". Say how the first two words are connected in a sentence, like "A dog makes the sound bark". Then use the same sentence for the third word.',
     SC: 'Read the sentence without the blank first. What kind of word is missing? Then try each choice in the sentence and listen for the one that makes sense.',
     VC: 'Ask: what do the words in the group have in common? Check each choice against that. The right one fits the group.',
     NA: 'Work out what happens to the first number to get the second. Then do the exact same thing to the third number.',
     NP: 'Use the opposite operation to find the missing number (+ and − are opposites, × and ÷ are opposites). Then put your answer back in the box to check.',
     NS: 'Look at the jumps between the numbers. Are they the same every time, getting bigger, or switching back and forth?',
-    FM: 'Look across the rows and down the columns. What changes: shape, colour, size or number? Follow one change at a time.',
+    FM: 'Look only at the top two boxes. What changed: did it turn, flip like a mirror, change colour, get bigger or smaller, or change how many there are? It can be two changes. Do the same to the bottom figure.',
     PF: 'Picture the paper unfolding one step at a time, going backwards. The holes copy across the fold line.',
-    FC: 'Cover the answers. What do the shapes in the group share? Then check each choice for that feature.'
+    FC: 'Colour, size and turning are usually not the answer. Count the sides, look for curved sides, count the equal parts, check how much is shaded, or look at what is inside. Then check each choice.'
   };
   function hint() {
     if (!P || !P.q || P.done || !P.mode) return;
@@ -378,7 +380,8 @@
         s.items.map((x, i) => '<button class="cn ' + (x.ok ? 'r' : 'w') + (rv.code === s.code && rv.idx === i ? ' here' : '') + '" data-a="rq" data-v="' + s.code + '" data-w="' + i + '" aria-label="Question ' + (i + 1) + (x.ok ? ' right' : ' wrong') + '">' + (i + 1) + '<small>' + LN[x.lv][0] + (x.ok ? '✓' : '✗') + '</small></button>').join('') + '</div>';
       if (rv.code === s.code && rv.idx !== undefined) {
         const it = s.items[rv.idx], q = PP.get(it.id);
-        h += '<div class="rvq"><b>Question ' + (rv.idx + 1) + ' · ' + LN[it.lv] + ' · ' + (it.ok ? 'right' : it.pick === null ? 'not answered' : 'wrong') + (it.fu ? ' · 🔁 check-up' : '') + '</b>' + qHTML(q, it.pick, true) + '<div class="fb ' + (it.ok ? 'good' : 'bad') + '">' + (it.pick === null ? 'Not answered. ' : it.ok ? '' : 'Your answer was ' + PP.LETTERS[it.pick] + '. ') + 'Right answer: ' + PP.LETTERS[q.ans] + '. ' + q.exp + '</div></div>';
+        if (it.old) h += '<div class="rvq"><b>Question ' + (rv.idx + 1) + ' · ' + LN[it.lv] + ' · ' + (it.ok ? 'right' : it.pick === null ? 'not answered' : 'wrong') + '</b><p class="mute">This question was replaced when the app was updated to match the real test, so it can no longer be shown. The score from that day still counts.</p></div>';
+        else h += '<div class="rvq"><b>Question ' + (rv.idx + 1) + ' · ' + LN[it.lv] + ' · ' + (it.ok ? 'right' : it.pick === null ? 'not answered' : 'wrong') + (it.fu ? ' · 🔁 check-up' : '') + '</b>' + qHTML(q, it.pick, true) + '<div class="fb ' + (it.ok ? 'good' : 'bad') + '">' + (it.pick === null ? 'Not answered. ' : it.ok ? '' : 'Your answer was ' + PP.LETTERS[it.pick] + '. ') + 'Right answer: ' + PP.LETTERS[q.ans] + '. ' + q.exp + '</div></div>';
       }
       h += '</div>';
     });
