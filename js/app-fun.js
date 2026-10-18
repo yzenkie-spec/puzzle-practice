@@ -9,17 +9,11 @@
   const dark = hex => { const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return (r * 299 + g * 587 + b * 114) / 1000 < 150; };
 
   /* ---------------- player cards ---------------- */
-  function jersey(team) {
-    const c = PP.TEAMS[team] || ['#555555', '#ffffff'];
-    return '<svg class="jersey" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 14 L2 30 L14 34 L16 28 L16 58 L48 58 L48 28 L50 34 L62 30 L56 14 L44 6 Q32 16 20 6Z" fill="' + c[0] + '" stroke="#111" stroke-width="2" stroke-linejoin="round"/><rect x="16" y="38" width="32" height="6" fill="' + c[1] + '" opacity=".9"/><text x="32" y="31" text-anchor="middle" font-size="11" font-weight="800" fill="' + (dark(c[0]) ? '#ffffff' : '#111111') + '" font-family="Teko,sans-serif">' + team + '</text></svg>';
-  }
+  function jersey(team) { return PP.jerseySvg(team, 'e'); }
   function jerseyCard(j, mini) {
     const c = PP.TEAMS[j.team], v = j.lv;
     const body = v === 'a' ? '#ffffff' : c[0], trim = v === 'a' ? c[0] : c[1], txt = v === 'a' ? c[0] : (dark(c[0]) ? '#ffffff' : '#111111');
-    const svg = '<svg class="jersey" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 14 L2 30 L14 34 L16 28 L16 58 L48 58 L48 28 L50 34 L62 30 L56 14 L44 6 Q32 16 20 6Z" fill="' + body + '" stroke="#111" stroke-width="2" stroke-linejoin="round"/>' +
-      '<rect x="16" y="38" width="32" height="6" fill="' + trim + '"/><rect x="3" y="24" width="12" height="4" fill="' + trim + '" transform="rotate(-18 9 26)"/><rect x="49" y="24" width="12" height="4" fill="' + trim + '" transform="rotate(18 55 26)"/>' +
-      (v === 'c' ? '<path d="M32 12 l2.5 5 5.5.8-4 3.9.9 5.4-4.9-2.6-4.9 2.6.9-5.4-4-3.9 5.5-.8z" fill="#FFD54A" stroke="#111" stroke-width=".8"/>' : '') +
-      '<text x="32" y="' + (v === 'c' ? 36 : 31) + '" text-anchor="middle" font-size="11" font-weight="800" fill="' + txt + '" font-family="Teko,sans-serif">' + j.team + '</text></svg>';
+    const svg = PP.jerseySvg(j.team, v);
     return '<div class="pc jc t-' + (v === 'c' ? 'epic' : v === 'a' ? 'rare' : 'common') + (mini ? ' mini' : '') + '">' + svg + '<b>' + PP.JTEAMS[j.team] + '</b><span class="pos">' + PP.JVAR[v] + '</span>' + (j.n > 1 ? '<span class="rt">×' + j.n + '</span>' : '') + '</div>';
   }
   U.jerseyCard = jerseyCard;
@@ -30,7 +24,7 @@
     const have = Object.keys(o).length;
     const chips = '<div class="chips">' + ['e', 'a', 'c'].map(l => '<button class="chip' + (jv.lv === l ? ' on' : '') + '" data-a="jerLv" data-v="' + l + '">' + PP.JVAR[l] + ' (' + codes.filter(c => o[c + '|' + l]).length + '/' + codes.length + ')</button>').join('') + '</div>';
     const cells = codes.map(c => { const k = c + '|' + jv.lv; return o[k] ? '<div class="cc">' + jerseyCard({ team: c, lv: jv.lv, n: o[k] }, true) + '</div>' : '<div class="cc"><div class="pc locked mini"><b>???</b><span class="pos">' + PP.JTEAMS[c] + '</span></div></div>'; }).join('');
-    set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">👕 Jerseys</span></div><h1>Jersey collection</h1><div class="card"><div class="lvh"><b>Collected</b><span>' + have + ' of ' + all + '</span></div>' + U.bar(have / all * 100) + '<small class="mute">Pass a level to win a jersey. Easy = Home, Average = Away, Challenging = Retro.</small></div>' + chips + '<div class="cgrid">' + cells + '</div>');
+    set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">👕 Jerseys</span></div><h1>Jersey collection</h1><div class="card"><div class="lvh"><b>Collected</b><span>' + have + ' of ' + all + '</span></div>' + U.bar(have / all * 100) + '<small class="mute">Score 90% or more on a mock test to win a jersey: 90% = Home, 95% = Away, 100% = Retro.</small></div>' + chips + '<div class="cgrid">' + cells + '</div>');
   }
   /* ---------------- save / restore progress ---------------- */
   let bk = { code: '', msg: '', ok: true };
