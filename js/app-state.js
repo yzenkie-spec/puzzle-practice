@@ -14,7 +14,7 @@
 
   const freshTeam = name => ({ name, slots: {} });
   const fresh = () => ({ v: 3, bank: 2, rule: 2, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
-    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, toon: { owned: {}, hist: [] }, stick: { owned: {}, hist: [] }, streak: { n: 0, best: 0 }, jer: { owned: {} }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
+    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, toon: { owned: {}, hist: [] }, stick: { owned: {}, hist: [] }, streak: { n: 0, best: 0 }, jer: { owned: {} }, fan: { picks: [], owned: {}, gear: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
@@ -47,6 +47,7 @@
   if (!D.toon) D.toon = { owned: {}, hist: [] };
   if (!D.stick) D.stick = { owned: {}, hist: [] };
   if (!D.streak) D.streak = { n: 0, best: 0 };
+  if (!D.fan.gear) D.fan.gear = {};
   D.fan.picks = D.fan.picks.map(k => typeof k === 'number' ? { pool: null, q: k } : k);   // older saves: a plain number = a pick for either team
   ['cur', 'all'].forEach(p => {   // team spots: 3 lines + goalie (older saves had 6 spots)
     const t = D.fan.teams[p], old = t.slots, ns = {};
@@ -391,6 +392,26 @@
   PP.fan = {
     team,
     owned: id => !!D.fan.owned[id],
+    /* gear: each collected player can wear one jersey and carry one stick he has won (a spare of the same item can go to a second player) */
+    gearOf: id => { const g = D.fan.gear[id] || {}; return { j: g.j || null, s: g.s || null }; },
+    gearUsed: (kind, key) => Object.keys(D.fan.gear).filter(id => D.fan.gear[id][kind] === key).length,
+    gearFree: (kind, key, forId) => {
+      const have = kind === 'j' ? D.jer.owned[key] : D.stick.owned[key];
+      return (have || 0) - PP.fan.gearUsed(kind, key) + (D.fan.gear[forId] && D.fan.gear[forId][kind] === key ? 1 : 0);
+    },
+    setGear(id, kind, key) {
+      if (!D.fan.owned[id] || (kind !== 'j' && kind !== 's')) return false;
+      const g = D.fan.gear[id] || (D.fan.gear[id] = { j: null, s: null });
+      if (!key) { g[kind] = null; }
+      else {
+        if (kind === 'j' ? !D.jer.owned[key] : !D.stick.owned[key]) return false;
+        if (PP.fan.gearFree(kind, key, id) < 1) return false;
+        g[kind] = key;
+      }
+      if (!g.j && !g.s) delete D.fan.gear[id];
+      PP.save(); return true;
+    },
+    teamMatch: id => { const g = PP.fan.gearOf(id), p = PP.NHL_BY_ID[id]; return !!(g.j && p && g.j.split('|')[0] === p.team); },
     pickIdx: pool => D.fan.picks.findIndex(k => !k.pool || k.pool === pool),
     pickCount: pool => D.fan.picks.filter(k => !k.pool || k.pool === pool).length,
     placedAt: (pool, id) => PP.SLOTS.find(s => team(pool).slots[s] === id) || null,

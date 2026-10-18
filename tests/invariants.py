@@ -218,6 +218,21 @@ with sync_playwright() as p:
       if(PP.fan.pickCount('cur')!==2||PP.fan.pickCount('all')!==2) bad.push('old picks work for either team'); if(!D.stick||!D.streak) bad.push('missing new fields'); return bad; }""")
     check('R16 draft picks are typed by team and older picks migrate', r == [] and r2 == [], [r, r2])
 
+    # R17: gear: a player wears only a jersey and carries only a stick he has won; a spare is needed for a second player; team match
+    r = ev("""()=>{ PP.reset(); const D=PP.D(), bad=[]; const [a,b]=PP.NHL.cur.slice(0,2);
+      D.fan.owned[a.id]=1; D.fan.owned[b.id]=1;
+      if(PP.fan.setGear(a.id,'j',a.team+'|e')) bad.push('wore a jersey he does not own');
+      if(PP.fan.setGear(a.id,'s','s0')) bad.push('carried a stick he does not own');
+      D.jer.owned[a.team+'|e']=1; D.stick.owned['s0']=1;
+      if(!PP.fan.setGear(a.id,'j',a.team+'|e')||!PP.fan.teamMatch(a.id)) bad.push('own-team jersey failed or no match');
+      if(PP.fan.setGear(b.id,'j',a.team+'|e')) bad.push('one jersey worn by two players');
+      D.jer.owned[a.team+'|e']=2; if(!PP.fan.setGear(b.id,'j',a.team+'|e')) bad.push('spare jersey refused');
+      if(!PP.fan.setGear(a.id,'s','s0')) bad.push('stick failed'); if(PP.fan.setGear(b.id,'s','s0')) bad.push('one stick for two players');
+      PP.fan.setGear(a.id,'j',null); PP.fan.setGear(a.id,'s',null); if(D.fan.gear[a.id]) bad.push('empty gear not cleaned');
+      if(PP.fan.setGear('nobody','j',a.team+'|e')) bad.push('gear for an uncollected player');
+      return bad; }""")
+    check('R17 players wear only jerseys and sticks he owns; spares allow a second player', r == [], r)
+
     check('no page errors during all checks', errs == [], errs[:3])
     b.close()
 print('\n%d failed' % len(fails) if fails else '\nALL PASS')

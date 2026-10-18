@@ -74,8 +74,9 @@
     rd.readAsText(e.target.files[0]);
   });
   function card(p, mini) {
-    const t = PP.tier(p.r);
-    return '<div class="pc t-' + t + (mini ? ' mini' : '') + '">' + jersey(p.team) + '<b>' + p.name + '</b><span class="pos">' + p.pos + '</span><span class="rt">' + p.r + '</span>' + (mini ? '' : '<small>' + PP.TIER_NAME[t] + '</small>') + '</div>';
+    const t = PP.tier(p.r), g = PP.fan.gearOf(p.id), jk = g.j ? g.j.split('|') : null, st = g.s ? PP.STICK_BY_ID[g.s] : null;
+    const jsvg = jk ? PP.jerseySvg(jk[0], jk[1]) : jersey(p.team);
+    return '<div class="pc t-' + t + (mini ? ' mini' : '') + '">' + jsvg + (st ? '<span class="gearstk">' + PP.stickSvg(st) + '</span>' : '') + (PP.fan.teamMatch(p.id) ? '<span class="match" title="Wearing his own team jersey">✨</span>' : '') + '<b>' + p.name + '</b><span class="pos">' + p.pos + '</span><span class="rt">' + p.r + '</span>' + (mini ? '' : '<small>' + PP.TIER_NAME[t] + '</small>') + '</div>';
   }
   let ed = null;   // lineup spot being edited
   function lineup(pool) {
@@ -106,12 +107,13 @@
     set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">🏆 Fantasy teams</span></div><h1>My fantasy teams</h1>' + poolTabs('fanPool') +
       '<div class="card"><label class="mute" for="tname">Team name</label><input id="tname" class="tname" maxlength="24" value="' + esc(tm.name) + '"><div class="lvh"><b>Team rating</b><span>' + (rt.n ? rt.avg : '–') + ' · ' + rt.n + ' of 16 spots filled</span></div>' + U.bar(rt.avg) + '<small class="mute">' + PP.POOL_ICON[other] + ' ' + esc(PP.fan.team(other).name) + ': ' + (ro.n ? ro.avg : '–') + ' (' + ro.n + ' of 16)</small></div>' +
       '<h2>Lineup</h2><p class="sub">Tap a spot to choose any player you have collected. Pick a player who is already in another spot and the two swap places.</p>' + lineup(pool) + picker(pool) +
-      '<button class="ghost wide" data-a="collection" style="margin-top:10px">📇 Player collection (' + Object.keys(d.fan.owned).length + ' collected)</button>' + (pk ? '<button class="go" data-a="draft">Draft a player (' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready)</button>' : '<div class="card main"><b>No draft picks yet</b><p class="sub">Pass a level in regular practice to earn a pick. Score 90% or more on a mock test to earn one too.</p></div>') +
+      '<button class="ghost wide" data-a="collection" style="margin-top:10px">📇 Player collection (' + Object.keys(d.fan.owned).length + ' collected)</button>' + (pk ? '<button class="go" data-a="draft">Draft a player (' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready)</button>' : '<div class="card main"><b>No draft picks yet</b><p class="sub">Pass a level in regular practice to earn a current-player pick. Get 9 of 10 right in a smart session to earn an all-time legend pick.</p></div>') +
       (hist ? '<h2>Recent picks</h2><div class="card"><ul class="weak">' + hist + '</ul></div>' : '') +
       '<p class="sub mute">Player ratings are made up for this game. Teams are as of the 2025-26 season.</p>');
   }
 
   /* ---------------- collection: every player he has drafted ---------------- */
+  const gs = { id: null };
   let cv = { pool: 'cur', pos: 'all' };
   function collection() {
     U.stop();
@@ -121,11 +123,30 @@
     const tabs = '<div class="tabs">' + ['cur', 'all'].map(p => '<button class="tab' + (cv.pool === p ? ' on' : '') + '" data-a="colPool" data-v="' + p + '">' + PP.POOL_ICON[p] + ' ' + PP.POOL_NAME[p] + '</button>').join('') + '</div>';
     const chips = '<div class="chips2">' + ['all', 'C', 'LW', 'RW', 'D', 'G'].map(x => '<button class="chip' + (cv.pos === x ? ' on' : '') + '" data-a="colPos" data-v="' + x + '">' + (x === 'all' ? 'All' : x) + '</button>').join('') + '</div>';
     const cells = shown.map(p => {
-      if (d.fan.owned[p.id]) return '<div class="cc">' + card(p, true) + (PP.fan.onTeam(cv.pool, p.id) ? '<small class="good">On my team</small>' : '<small class="mute">Collected</small>') + '</div>';
+      if (d.fan.owned[p.id]) return '<div class="cc"><button class="pickc" data-a="player" data-v="' + p.id + '">' + card(p, true) + '</button>' + (PP.fan.onTeam(cv.pool, p.id) ? '<small class="good">On my team</small>' : '<small class="mute">Tap to dress him</small>') + '</div>';
       return '<div class="cc"><div class="pc mini locked t-' + PP.tier(p.r) + '"><span class="q">❔</span><b>???</b><span class="pos">' + p.pos + '</span><small>' + PP.TIER_NAME[PP.tier(p.r)] + '</small></div><small class="mute">Not collected</small></div>';
     }).join('');
     set('<div class="top"><button class="ghost" data-a="fantasy">My team</button><span class="mute">📇 Collection</span></div><h1>Player collection</h1>' + tabs +
       '<div class="card"><div class="lvh"><b>Collected</b><span>' + have + ' of ' + list.length + '</span></div>' + U.bar(have / list.length * 100) + '<small class="mute">Draft players to fill the collection. Every player you draft stays here, even if you later swap him off your team.</small></div>' + chips + '<div class="cgrid">' + cells + '</div>');
+  }
+
+  /* ---------------- dress a player: pick his jersey and stick ---------------- */
+  function player(id) {
+    U.stop();
+    const p = PP.NHL_BY_ID[id]; if (!p || !D().fan.owned[id]) return collection();
+    const g = PP.fan.gearOf(id), o = D().jer.owned, so = D().stick.owned;
+    const jers = Object.keys(o).filter(k => PP.fan.gearFree('j', k, id) > 0 || g.j === k).sort((a, b) => ((b.split('|')[0] === p.team) - (a.split('|')[0] === p.team)) || a.localeCompare(b));
+    const sts = PP.STICKS.filter(t => so[t.id] && (PP.fan.gearFree('s', t.id, id) > 0 || g.s === t.id)).sort((a, b) => ['legend', 'epic', 'rare', 'common'].indexOf(a.tier) - ['legend', 'epic', 'rare', 'common'].indexOf(b.tier));
+    const jc = jers.map(k => { const q = k.split('|'); return '<button class="pickc' + (g.j === k ? ' sel' : '') + '" data-a="gearSet" data-v="j|' + k + '">' + jerseyCard({ team: q[0], lv: q[1] }, true) + '<small class="' + (q[0] === p.team ? 'good' : 'mute') + '">' + (g.j === k ? 'Wearing' : q[0] === p.team ? 'His team ✨' : 'Wear') + '</small></button>'; }).join('');
+    const sc = sts.map(t => '<button class="pickc' + (g.s === t.id ? ' sel' : '') + '" data-a="gearSet" data-v="s|' + t.id + '">' + stickCard(t, 0, true) + '<small class="' + (g.s === t.id ? 'good' : 'mute') + '">' + (g.s === t.id ? 'Carrying' : 'Use') + '</small></button>').join('');
+    set('<div class="top"><button class="ghost" data-a="collection">Collection</button><span class="mute">🎽 Dress up</span></div><h1>' + p.name + '</h1><div class="reveal">' + card(p, false) + '</div>' +
+      (PP.fan.teamMatch(id) ? '<p class="sub good">✨ He is wearing his own team\'s jersey!</p>' : '<p class="sub">Tip: a jersey from his own team (' + PP.JTEAMS[p.team] + ') gives him a ✨.</p>') +
+      '<h2>Jersey</h2>' + (g.j ? '<button class="ghost wide" data-a="gearSet" data-v="j|">Take his jersey off</button>' : '') + (jers.length ? '<div class="cgrid">' + jc + '</div>' : '<p class="sub">You have no spare jerseys. Score 90% or more on a mock test to win one!</p>') +
+      '<h2>Stick</h2>' + (g.s ? '<button class="ghost wide" data-a="gearSet" data-v="s|">Take his stick away</button>' : '') + (sts.length ? '<div class="cgrid">' + sc + '</div>' : '<p class="sub">You have no spare sticks. Get 8 right in a row to win one!</p>'));
+  }
+  function gearSet(v) {
+    const i = v.indexOf('|'), kind = v.slice(0, i), key = v.slice(i + 1), id = gs.id;
+    PP.fan.setGear(id, kind, key || null); player(id);
   }
 
   /* ---------------- draft ---------------- */
@@ -173,9 +194,7 @@
     }
   }
   /* ---------------- hockey sticks ---------------- */
-  function stickSvg(t) {
-    return '<svg class="stickimg" viewBox="0 0 64 64" aria-hidden="true"><path d="M44 4 L50 4 L24 52 Q22 56 16 56 L8 56 Q6 56 6 54 L6 51 Q6 50 8 50 L18 50 L44 4Z" fill="' + t.c1 + '" stroke="#111" stroke-width="2" stroke-linejoin="round"/><path d="M8 51 L22 51 L19 56 L8 56Z" fill="' + t.c2 + '" stroke="#111" stroke-width="1.5"/><rect x="40" y="9" width="8" height="4" fill="' + t.c2 + '" transform="rotate(-29 44 11)"/>' + (t.tier === 'legend' || t.tier === 'epic' ? '<path d="M54 20 l1.6 3.4 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#FFD54A" stroke="#111" stroke-width=".8"/>' : '') + '</svg>';
-  }
+  const stickSvg = t => PP.stickSvg(t);
   function stickCard(t, n, mini) {
     return '<div class="pc tc t-' + t.tier + (mini ? ' mini' : '') + '">' + stickSvg(t) + '<b>' + t.name + '</b><span class="pos">' + PP.TIER_NAME[t.tier] + '</span>' + (n > 1 ? '<span class="rt">×' + n + '</span>' : '') + (mini ? '' : '<small>' + t.desc + '</small>') + '</div>';
   }
@@ -323,7 +342,7 @@
   }
 
   Object.assign(A, {
-    collection, colPool: v => { cv.pool = v; collection(); }, colPos: v => { cv.pos = v; collection(); },
+    player: v => { gs.id = v; player(v); }, gearSet, collection, colPool: v => { cv.pool = v; collection(); }, colPos: v => { cv.pos = v; collection(); },
     fantasy, fantasyHome: () => { R = null; ed = null; fantasy(); }, draft, draftPick, fanPool: v => { fs.pool = v; ed = null; fantasy(); },
     slotPick: v => { ed = ed === v ? null : v; fantasy(); const el = document.getElementById('picker'); if (el) el.scrollIntoView({ block: 'center' }); },
     slotSet: id => { if (ed) PP.fan.place(fs.pool, ed, id); ed = null; fantasy(); },
