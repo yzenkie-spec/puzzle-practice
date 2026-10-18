@@ -65,7 +65,7 @@
     stop(); P = null; if (D().cur) PP.save();
     const d = D(), k = PP.streak(), td = PP.dayStats(PP.dkey());
     let h = '<div class="hero"><div class="puck" aria-hidden="true">🏒</div><div><h1>Puzzle Practice</h1><p class="sub">Warm up, play the puzzles, win the game!</p></div></div>' +
-      '<div class="badges"><span>' + (k ? '🔥 ' + k + '-day streak' : '🔥 Start a streak today') + '</span><span>🥅 ' + d.stars + ' goals</span><span>⏱️ ' + mins(td.time) + ' today</span></div>' +
+      '<div class="badges"><span><b>' + k + '</b>day streak</span><span><b>' + d.stars + '</b>goals</span><span><b>' + Math.round(td.time / 60) + '</b>min today</span></div>' +
       bar(td.time / PP.DAILY_GOAL * 100) + '<small class="mute">Daily goal: 20 minutes of practice</small>';
     const mc = PP.missCounts(), pk = d.fan.picks.length;
     h += '<div class="row"><button class="ghost" data-a="fantasyHome">🏆 Fantasy teams' + (pk ? ' <span class="pill">' + pk + ' pick' + (pk > 1 ? 's' : '') + '</span>' : '') + '</button><button class="ghost" data-a="jerseys">👕 Jerseys <span class="pill">' + Object.keys(d.jer.owned).length + '</span></button></div><div class="row"><button class="ghost" data-a="toons">🎭 Cartoons <span class="pill">' + Object.keys(d.toon.owned).length + '</span></button><button class="ghost" data-a="mistakes">🧠 Mistakes' + (mc.open ? ' <span class="pill">' + mc.open + '</span>' : '') + '</button></div>';

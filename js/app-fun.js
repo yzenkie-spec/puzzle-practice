@@ -11,7 +11,7 @@
   /* ---------------- player cards ---------------- */
   function jersey(team) {
     const c = PP.TEAMS[team] || ['#555555', '#ffffff'];
-    return '<svg class="jersey" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 14 L2 30 L14 34 L16 28 L16 58 L48 58 L48 28 L50 34 L62 30 L56 14 L44 6 Q32 16 20 6Z" fill="' + c[0] + '" stroke="#111" stroke-width="2" stroke-linejoin="round"/><rect x="16" y="38" width="32" height="6" fill="' + c[1] + '" opacity=".9"/><text x="32" y="31" text-anchor="middle" font-size="11" font-weight="800" fill="' + (dark(c[0]) ? '#ffffff' : '#111111') + '" font-family="Fredoka,sans-serif">' + team + '</text></svg>';
+    return '<svg class="jersey" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 14 L2 30 L14 34 L16 28 L16 58 L48 58 L48 28 L50 34 L62 30 L56 14 L44 6 Q32 16 20 6Z" fill="' + c[0] + '" stroke="#111" stroke-width="2" stroke-linejoin="round"/><rect x="16" y="38" width="32" height="6" fill="' + c[1] + '" opacity=".9"/><text x="32" y="31" text-anchor="middle" font-size="11" font-weight="800" fill="' + (dark(c[0]) ? '#ffffff' : '#111111') + '" font-family="Teko,sans-serif">' + team + '</text></svg>';
   }
   function jerseyCard(j, mini) {
     const c = PP.TEAMS[j.team], v = j.lv;
@@ -19,7 +19,7 @@
     const svg = '<svg class="jersey" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 14 L2 30 L14 34 L16 28 L16 58 L48 58 L48 28 L50 34 L62 30 L56 14 L44 6 Q32 16 20 6Z" fill="' + body + '" stroke="#111" stroke-width="2" stroke-linejoin="round"/>' +
       '<rect x="16" y="38" width="32" height="6" fill="' + trim + '"/><rect x="3" y="24" width="12" height="4" fill="' + trim + '" transform="rotate(-18 9 26)"/><rect x="49" y="24" width="12" height="4" fill="' + trim + '" transform="rotate(18 55 26)"/>' +
       (v === 'c' ? '<path d="M32 12 l2.5 5 5.5.8-4 3.9.9 5.4-4.9-2.6-4.9 2.6.9-5.4-4-3.9 5.5-.8z" fill="#FFD54A" stroke="#111" stroke-width=".8"/>' : '') +
-      '<text x="32" y="' + (v === 'c' ? 36 : 31) + '" text-anchor="middle" font-size="11" font-weight="800" fill="' + txt + '" font-family="Fredoka,sans-serif">' + j.team + '</text></svg>';
+      '<text x="32" y="' + (v === 'c' ? 36 : 31) + '" text-anchor="middle" font-size="11" font-weight="800" fill="' + txt + '" font-family="Teko,sans-serif">' + j.team + '</text></svg>';
     return '<div class="pc jc t-' + (v === 'c' ? 'epic' : v === 'a' ? 'rare' : 'common') + (mini ? ' mini' : '') + '">' + svg + '<b>' + PP.JTEAMS[j.team] + '</b><span class="pos">' + PP.JVAR[v] + '</span>' + (j.n > 1 ? '<span class="rt">×' + j.n + '</span>' : '') + '</div>';
   }
   U.jerseyCard = jerseyCard;
