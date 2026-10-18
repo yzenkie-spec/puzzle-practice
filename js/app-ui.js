@@ -157,7 +157,7 @@
       const q = P.q, ok = i === q.ans, secs = (Date.now() - P.t0) / 1000;
       let res, btn = 'Next question', act = 'next';
       if (P.mode === 'practice') {
-        res = PP.answerPractice(q, i, secs, P.smart);
+        res = PP.answerPractice(q, i, secs, P.smart, !!P.fromMiss);
         if (res.levelPassed) { btn = 'Level passed!'; act = 'levelUp'; }
       } else {
         res = PP.answerFocus(q, i, secs);

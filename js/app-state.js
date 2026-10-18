@@ -27,6 +27,10 @@
   } catch (e) {}
   if (D.cur) D.cur.subs.forEach(s => { s.end = 0; });
   if (!D.ask) D.ask = {};
+  Object.keys(D.sec).forEach(c => {   // older versions banked credits for harder levels: clear any above the level in progress
+    const L = ['e', 'a', 'c'], f = L.findIndex(l => !(D.sec[c][l] && D.sec[c][l].c >= NEED));
+    if (f >= 0) L.slice(f + 1).forEach(l => { if (D.sec[c][l]) D.sec[c][l].c = 0; });
+  });
   if (!D.jer) D.jer = { owned: {} };
   if (!D.toon) D.toon = { owned: {}, hist: [] };
   ['cur', 'all'].forEach(p => {   // team spots: 3 lines + goalie (older saves had 6 spots)
@@ -178,14 +182,16 @@
     const base = PP.LEVELS.indexOf(PP.curLevel(code)), a = D.ask[code];
     return PP.LEVELS[Math.max(base, a === undefined ? base : a)];
   };
-  PP.answerPractice = function (q, pick, secs, smart) {
+  /* Passing a level takes exactly 10 right answers while that level is the current one (harder questions
+     are still served by the staircase, but every right answer counts only for the level being passed, so one
+     answer can never pass a level that was already "banked"). Smart practice and mistake retries never count. */
+  PP.answerPractice = function (q, pick, secs, smart, noLevel) {
     const ok = pick === q.ans, qi = PP.LEVELS.indexOf(q.lv);
     const before = PP.LEVELS.filter(l => PP.passed(q.sec, l));
-    // a right answer counts for its own level and for every easier level too
-    // smart practice never moves level counters: levels are passed in regular section practice only
-    if (!smart) { if (ok) PP.LEVELS.forEach((l, i) => { if (i <= qi) PP.S(q.sec)[l].c++; }); else PP.S(q.sec)[q.lv].w++; }
+    if (!smart && !noLevel) { if (ok) PP.S(q.sec)[PP.curLevel(q.sec)].c++; else PP.S(q.sec)[q.lv].w++; }
     D.ask[q.sec] = Math.max(0, Math.min(2, qi + (ok ? 1 : -1)));
     const newly = PP.LEVELS.filter(l => PP.passed(q.sec, l) && !before.includes(l));
+    if (newly.length) delete D.ask[q.sec];   // the next level starts from its own first question
     PP.record(q, ok, secs, 'p', pick);
     PP.addTime(Math.min(secs || 0, 120));
     const sessionDone = smart ? PP.sessionAdd(ok) : false;   // only smart practice counts toward a cartoon character
