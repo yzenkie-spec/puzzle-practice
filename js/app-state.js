@@ -396,6 +396,21 @@
     const a = D.log.filter(x => x[1] === code), ok = a.filter(x => x[3]).length, r = a.slice(-20);
     return { n: a.length, ok, recent: r.length ? r.filter(x => x[3]).length / r.length : null };
   };
+  /* ---------- weekly summary for the parent ---------- */
+  PP.weekly = function () {
+    const DAY = 864e5, t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const start = t0.getTime() - 6 * DAY, prev = start - 7 * DAY;
+    const inW = D.log.filter(x => x[0] >= start), inP = D.log.filter(x => x[0] >= prev && x[0] < start);
+    const acc = a => (a.length ? a.filter(x => x[3]).length / a.length : null);
+    const keys = []; for (let i = 6; i >= 0; i--) keys.push(dkey(new Date(t0.getTime() - i * DAY)));
+    const dayN = keys.map(k => ({ k, n: PP.dayStats(k).n, time: D.time[k] || 0 }));
+    const sec = PP.SECS.map(x => { const a = inW.filter(y => y[1] === x.code); return { code: x.code, n: a.length, acc: acc(a), cur: PP.curLevel(x.code), done: PP.allDone(x.code) }; });
+    const tests = D.tests.filter(t => t.date && new Date(t.date).getTime() >= start).map(t => ({ n: PP.testCount(t), ok: PP.testTotal(t) }));
+    const lastTest = D.tests[0] ? { pct: PP.testTotal(D.tests[0]) / PP.testCount(D.tests[0]) } : null;
+    return { days: dayN, activeDays: dayN.filter(d => d.n > 0).length, minutes: Math.round(dayN.reduce((s, d) => s + d.time, 0) / 60), goalMin: 7 * (PP.DAILY_GOAL / 60),
+      n: inW.length, acc: acc(inW), prevN: inP.length, prevAcc: acc(inP), sec, tests, lastTest, mistakes: PP.missCounts(), weak: PP.weakSpots().slice(0, 3),
+      jerseys: Object.keys(D.jer.owned).length, toons: Object.keys(D.toon.owned).length };
+  };
   PP.weakSpots = function () {
     return Object.keys(D.tag).map(k => ({ k, code: k.split('|')[0], tag: k.slice(k.indexOf('|') + 1), st: D.tag[k] }))
       .filter(x => x.st.n >= 3 && x.st.s >= 0.3)

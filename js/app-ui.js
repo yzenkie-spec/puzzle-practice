@@ -58,7 +58,7 @@
     }).join('');
     return '<div class="opts' + (q.svgOpts ? ' sv' : '') + '" id="opts">' + opts + '</div>';
   }
-  const qHTML = (q, sel, marks) => '<div class="card">' + q.stem + '</div>' + optsHTML(q, sel, marks);
+  const qHTML = (q, sel, marks) => '<div class="qgrid' + (q.svgOpts ? ' sv' : '') + '"><div class="card">' + q.stem + '</div>' + optsHTML(q, sel, marks) + '</div>';
 
   /* ---------------- Home ---------------- */
   function home() {
@@ -88,7 +88,7 @@
         return '<button class="tile" data-a="sec" data-v="' + s.code + '"><b>' + s.icon + ' ' + s.name + '</b><span class="chips">' + chips + '</span></button>';
       }).join('') + '</div>';
     });
-    h += '<div class="row"><button class="ghost" data-a="review">📝 Review</button><button class="ghost" data-a="tracker">📊 Tracker</button></div><div class="row"><button class="ghost" data-a="backup">💾 Save / restore progress</button></div>';
+    h += '<div class="row"><button class="ghost" data-a="review">📝 Review</button><button class="ghost" data-a="tracker">📊 Tracker</button></div><div class="row"><button class="ghost" data-a="parent">👨‍👩‍👦 Parent summary</button><button class="ghost" data-a="backup">💾 Save / restore</button></div>';
     set(h);
   }
 
@@ -246,7 +246,7 @@
       const st = s.left <= 0 ? 'Time is up' : s.done ? 'Finished' : s.started ? 'In progress' : 'Not started';
       const cls = s.done || s.left <= 0 ? 'done' : s.started ? 'open' : 'lock';
       const lbl = !s.started ? 'Start' : (s.left > 0 ? 'Open' : 'Look back');
-      return '<button class="tile wide part" data-a="mockPart" data-v="' + i + '"><div class="lvh"><b>' + (i + 1) + '. ' + secIcon(s.code) + ' ' + secName(s.code) + '</b><span class="lc ' + cls + '">' + st + '</span></div><small class="mute">' + ans + ' of ' + s.ids.length + ' answered · ' + (s.left <= 0 ? 'no time left' : fmt(s.left) + ' left') + ' · tap to ' + lbl.toLowerCase() + '</small></button>';
+      return (i % 3 === 0 ? '<div class="grp">' + ['Verbal', 'Quantitative', 'Nonverbal'][i / 3] + '</div>' : '') + '<button class="tile wide part" data-a="mockPart" data-v="' + i + '"><div class="lvh"><b>' + (i + 1) + '. ' + secIcon(s.code) + ' ' + secName(s.code) + '</b><span class="lc ' + cls + '">' + st + '</span></div><small class="mute">' + ans + ' of ' + s.ids.length + ' answered · ' + (s.left <= 0 ? 'no time left' : fmt(s.left) + ' left') + ' · tap to ' + lbl.toLowerCase() + '</small></button>';
     }).join('');
     set('<div class="top"><button class="ghost" data-a="home">Take a break</button><span class="mute">Mock test #' + (D().tests.length + 1) + '</span></div><h1>Your parts</h1>' + intro +
       '<p class="sub">' + PP.mockAnswered(c) + ' of ' + PP.mockTotal(c) + ' questions answered. Open a part to work on it.</p>' + rows +
@@ -308,6 +308,55 @@
       (fu ? '<div class="card"><b>🔁 Check-up questions</b><p class="sub">You got ' + fuOk + ' of ' + fu + ' right on the questions that matched your mistakes from last time.</p></div>' : '') +
       (D().focus ? '<div class="card main"><b>🎯 Next step: focus practice</b><p class="sub">You missed questions in ' + Object.keys(D().focus.needs).length + ' puzzle type(s). Finish focus practice to unlock the next mock test.</p></div><div class="menu"><button class="go" data-a="focusStart">Start focus practice</button>' : '<div class="card main"><b>Perfect score! 🏆</b><p class="sub">No focus practice needed.</p></div><div class="menu">') +
       '<button class="ghost wide" data-a="reviewTest" data-v="' + t.id + '">Review every question</button><button class="ghost wide" data-a="home">Home</button></div>');
+  }
+
+  /* ---------------- Weekly summary for the parent ---------------- */
+  let parentText = '';
+  function parent() {
+    stop();
+    const w = PP.weekly(), pct = x => (x === null ? '–' : Math.round(x * 100) + '%');
+    const lines = [], act = [];
+    const enough = w.n >= 20 && w.prevN >= 20;
+    let head;
+    if (!w.n) head = 'No practice was recorded in the last 7 days.';
+    else {
+      head = 'This week: ' + w.activeDays + ' practice day' + (w.activeDays === 1 ? '' : 's') + ', ' + w.minutes + ' minutes, ' + w.n + ' questions, ' + pct(w.acc) + ' right.';
+    }
+    // actions (decision first: what to do next week)
+    if (w.activeDays < 4) act.push('Aim for short sessions on more days. ' + w.activeDays + ' of 7 days were used this week. Ten to twenty minutes a day works better than one long session.');
+    const judged = w.sec.filter(s => s.n >= 8 && s.acc !== null).sort((a, b) => a.acc - b.acc);
+    if (judged.length && judged[0].acc < 0.65) act.push('Spend extra time on ' + secName(judged[0].code) + ' (' + pct(judged[0].acc) + ' right over ' + judged[0].n + ' questions). Use the hint button and read the explanations together after wrong answers.');
+    const untouched = w.sec.filter(s => s.n === 0 && !s.done);
+    if (untouched.length) act.push('Not practised this week: ' + untouched.map(s => secName(s.code)).join(', ') + '. Smart practice or a mock test will mix them in.');
+    if (w.mistakes.open >= 10) act.push('The mistakes notebook has ' + w.mistakes.open + ' questions he has not marked "understood". Go through five of them together this week.');
+    else if (w.mistakes.open > 0) act.push(w.mistakes.open + ' mistake' + (w.mistakes.open === 1 ? '' : 's') + ' still to review in the notebook.');
+    if (D().focus) act.push('Focus practice is waiting. Finishing it unlocks the next mock test.');
+    if (!act.length && w.n) act.push('Keep the same routine. Nothing needs changing right now.');
+    // trend (only when both weeks have enough questions)
+    let trend;
+    if (!w.n) trend = '';
+    else if (!enough) trend = 'Too few questions (under 20 in each week) to say whether accuracy is going up or down.';
+    else {
+      const d = Math.round((w.acc - w.prevAcc) * 100);
+      trend = Math.abs(d) < 5 ? 'Accuracy is about the same as last week (' + pct(w.prevAcc) + ' before). A change under 5 points is normal ups and downs.' : 'Accuracy ' + (d > 0 ? 'rose' : 'fell') + ' ' + Math.abs(d) + ' points from last week (' + pct(w.prevAcc) + ').' + (d < 0 ? ' Harder questions after right answers can lower it, so this is not always bad.' : '');
+    }
+    const secRows = w.sec.map(s => '<tr><td>' + secIcon(s.code) + ' ' + secName(s.code) + '</td><td>' + s.n + '</td><td>' + (s.n >= 5 ? pct(s.acc) : '–') + '</td><td>' + (s.done ? 'All passed' : lvName(s.cur)) + '</td></tr>').join('');
+    const dayCells = w.days.map(d => '<div><b>' + (d.n || '·') + '</b><small>' + new Date(d.k + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short' }) + '</small></div>').join('');
+    const mock = w.tests.length ? 'Mock tests this week: ' + w.tests.map(t => t.ok + ' of ' + t.n + ' (' + Math.round(t.ok / t.n * 100) + '%)').join(', ') + '.' : (w.lastTest ? 'No mock test this week. The last one scored ' + Math.round(w.lastTest.pct * 100) + '%.' : 'No mock test taken yet.');
+    parentText = ['Weekly summary (last 7 days)', head, trend, mock, '', 'What to do next week:'].concat(act.map(a => '- ' + a), ['', 'By puzzle type (questions, % right, current level):'], w.sec.map(s => '- ' + secName(s.code) + ': ' + s.n + ', ' + (s.n >= 5 ? pct(s.acc) : 'too few') + ', ' + (s.done ? 'all passed' : lvName(s.cur))),
+      ['', 'Note: this only shows what he answered in the app, not how well he understood or how he felt. Under 8 to 10 questions in a puzzle type is too few to judge.']).filter(x => x !== undefined).join('\n');
+    set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">👨‍👩‍👦 Parent summary</span></div><h1>This week</h1>' +
+      '<div class="card main"><b>' + head + '</b>' + (trend ? '<p class="sub">' + trend + '</p>' : '') + '<p class="sub">' + mock + '</p></div>' +
+      '<h2>What to do next week</h2><div class="card"><ul class="weak">' + act.map(a => '<li>' + a + '</li>').join('') + '</ul></div>' +
+      '<h2>Last 7 days</h2><div class="pstat">' + dayCells + '</div><small class="mute">Questions answered each day. Goal: 20 minutes a day (' + w.minutes + ' of ' + w.goalMin + ' minutes this week).</small>' +
+      '<h2>By puzzle type</h2><div class="card scroll"><table class="tbl"><thead><tr><th>Puzzle type</th><th>Questions</th><th>Right</th><th>Level</th></tr></thead><tbody>' + secRows + '</tbody></table><small class="mute">Percentages show only after 5 or more questions. Under 8 to 10 questions is too few to judge.</small></div>' +
+      '<div class="card"><b>What this does not show</b><p class="sub">It counts answers in the app. It cannot tell whether he understood the idea, guessed, got help, or was tired. A mock test score is only a rough guide, because the questions are home-made and not the real test. Treat this as a conversation starter with him.</p></div>' +
+      '<div class="menu"><button class="go" data-a="parentCopy">📋 Copy this summary</button></div><div id="pmsg"></div>');
+  }
+  async function parentCopy() {
+    let ok = false;
+    try { await navigator.clipboard.writeText(parentText); ok = true; } catch (e) { try { const t = document.createElement('textarea'); t.value = parentText; document.body.appendChild(t); t.select(); ok = document.execCommand('copy'); t.remove(); } catch (e2) {} }
+    document.getElementById('pmsg').innerHTML = '<div class="fb ' + (ok ? 'good' : 'bad') + '">' + (ok ? 'Copied! Paste it into a message or notes.' : 'Could not copy on this device.') + '</div>';
   }
 
   /* ---------------- Review ---------------- */
@@ -375,7 +424,7 @@
     home, sec: secView, practice, smart, smartGo: () => { P.smart = true; nextPractice(); }, pick, next, levelUp, focusStart, focusDone,
     mockStart, mockResume, mockHub: () => mockHub(false), mockPart: v => mockPart(v), mockGo, mockFinishAll, mockDonePart,
     mockJump: v => mockGoTo(+v), mockPrev: () => mockGoTo(qi - 1), mockNext: () => mockGoTo(qi + 1),
-    hint, review, reviewTest: v => reviewTest(v), rq: (v, w) => reviewTest(rv.id, v, +w), tracker, reset, resetLevels
+    parent, parentCopy, hint, review, reviewTest: v => reviewTest(v), rq: (v, w) => reviewTest(rv.id, v, +w), tracker, reset, resetLevels
   };
   app.addEventListener('click', e => {
     const b = e.target.closest('[data-a]');
