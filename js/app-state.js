@@ -85,6 +85,13 @@
   PP.restoreData = function (r) { localStorage.setItem(KEY, JSON.stringify(r)); };
   PP.save = () => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) {} };
   PP.resetLevels = () => { D.sec = {}; D.ask = {}; D.sess = { n: 0, ok: 0 }; D.rule = 2; PP.save(); };   // level counters only: collections, tests, mistakes stay
+  /* start over: levels, streak and every collection (cartoons, sticks, jerseys, players, teams, gear) go back to empty;
+     mistake history, mock tests, goals and practice days stay */
+  PP.resetKeepMistakes = () => {
+    const f = fresh();
+    ['sec', 'ask', 'sess', 'streak', 'toon', 'stick', 'jer', 'fan'].forEach(k => { D[k] = f[k]; });
+    D.rule = 2; PP.save();
+  };
   PP.reset = () => { D = fresh(); PP.save(); };
 
   /* per level: c/w = answers counted so far (right/wrong), r = his last 10 counted answers (1 right, 0 wrong), p = 1 once passed */

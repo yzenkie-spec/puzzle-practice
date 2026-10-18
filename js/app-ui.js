@@ -1,7 +1,7 @@
 /* App screens. */
 (function () {
   const PP = window.PP, app = document.getElementById('app'), LN = PP.LEVEL_NAME, LI = PP.LEVEL_ICON;
-  let P = null, tm = null, qi = 0, sure = false, rv = null, resetArm = false, finArm = false, lvArm = false;
+  let P = null, tm = null, qi = 0, sure = false, rv = null, resetArm = false, finArm = false, lvArm = false, soArm = false;
   const D = () => PP.D();
   const pc = (a, b) => (b ? Math.round(a / b * 100) : 0);
   const set = h => { app.innerHTML = h; window.scrollTo(0, 0); };
@@ -429,9 +429,11 @@
       '<h2>By puzzle type</h2><div class="card scroll"><table class="tbl"><thead><tr><th>Puzzle type</th><th>Answered</th><th>Last 20</th><th>' + lvName('e') + '</th><th>' + lvName('a') + '</th><th>' + lvName('c') + '</th></tr></thead><tbody>' + srows + '</tbody></table></div>' +
       '<h2>Needs more practice</h2><div class="card">' + (weak ? '<ul class="weak">' + weak + '</ul><small class="mute">Smart practice and the next mock test give extra questions on these.</small>' : '<p>Nothing stands out yet. Keep practicing and this list will fill in.</p>') + '</div>' +
       '<button class="ghost" data-a="resetLevels">' + (lvArm ? 'Tap again: restart levels (collections stay)' : '🔄 Restart levels only (keep collections)') + '</button>' +
+      '<button class="ghost" data-a="startOver">' + (soArm ? 'Tap again: start over (mistakes are kept)' : '🧹 Start over: levels and collections (keep mistakes)') + '</button>' +
       '<button class="ghost" data-a="reset">' + (resetArm ? 'Tap again to erase everything' : 'Reset all progress') + '</button>');
   }
   function resetLevels() { if (!lvArm) { lvArm = true; return tracker(); } lvArm = false; PP.resetLevels(); home(); }
+  function startOver() { if (!soArm) { soArm = true; return tracker(); } soArm = false; PP.resetKeepMistakes(); home(); }
   function reset() { if (!resetArm) { resetArm = true; return tracker(); } resetArm = false; PP.reset(); home(); }
 
   /* ---------------- Events ---------------- */
@@ -439,7 +441,7 @@
     home, sec: secView, practice, smart, smartGo: () => { P.smart = true; nextPractice(); }, pick, next, levelUp, focusStart, focusDone,
     mockStart, mockResume, mockHub: () => mockHub(false), mockPart: v => mockPart(v), mockGo, mockFinishAll, mockDonePart,
     mockJump: v => mockGoTo(+v), mockPrev: () => mockGoTo(qi - 1), mockNext: () => mockGoTo(qi + 1),
-    parent, parentCopy, hint, review, reviewTest: v => reviewTest(v), rq: (v, w) => reviewTest(rv.id, v, +w), tracker, reset, resetLevels
+    parent, parentCopy, hint, review, reviewTest: v => reviewTest(v), rq: (v, w) => reviewTest(rv.id, v, +w), tracker, reset, resetLevels, startOver
   };
   app.addEventListener('click', e => {
     const b = e.target.closest('[data-a]');

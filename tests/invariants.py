@@ -233,6 +233,19 @@ with sync_playwright() as p:
       return bad; }""")
     check('R17 players wear only jerseys and sticks he owns; spares allow a second player', r == [], r)
 
+    # R18: start over keeps mistakes, mock tests and goals; clears levels, streak and all collections
+    r = ev("""()=>{ PP.reset(); const D=PP.D(), bad=[]; const q=PP.nextQ('VA','e').q;
+      for(let i=0;i<12;i++){ const r=PP.nextQ('VA',PP.askLevel('VA')); PP.answerPractice(r.q,i%4?r.q.ans:(r.q.ans+1)%5,3,false,false); }
+      PP.giveToon(); PP.giveStick(false); PP.winJersey('e'); D.fan.owned[PP.NHL.cur[0].id]=1; PP.addPicks(1,'cur',0); D.stars=7;
+      const miss=JSON.stringify(D.miss), tests=D.tests.length, used=JSON.stringify(D.used); if(!Object.keys(D.miss).length) bad.push('no mistakes to keep');
+      PP.resetKeepMistakes(); const d=PP.D();
+      if(JSON.stringify(d.miss)!==miss) bad.push('mistakes changed'); if(d.tests.length!==tests) bad.push('tests changed'); if(d.stars!==7) bad.push('goals changed'); if(JSON.stringify(d.used)!==used) bad.push('used list changed');
+      if(Object.keys(d.toon.owned).length||Object.keys(d.stick.owned).length||Object.keys(d.jer.owned).length||Object.keys(d.fan.owned).length||d.fan.picks.length||d.streak.n) bad.push('collections not empty');
+      if(!Object.values(d.sec).every(x=>['e','a','c'].every(l=>!x[l]||(x[l].c===0&&x[l].w===0&&!x[l].p)))) bad.push('levels not reset');
+      if(PP.passed('VA','e')||PP.curLevel('VA')!=='e') bad.push('first level not current'); if(d.rule!==2) bad.push('rule');
+      return bad; }""")
+    check('R18 start over clears levels and collections but keeps mistakes, tests and goals', r == [], r)
+
     check('no page errors during all checks', errs == [], errs[:3])
     b.close()
 print('\n%d failed' % len(fails) if fails else '\nALL PASS')
