@@ -1,0 +1,26 @@
+name: Tests
+
+# Runs the app's rule checks every time something is saved to GitHub.
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser for the tests
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+      - name: Rule checks (levels, rewards, questions, backup, mock tests)
+        run: python3 tests/invariants.py
+      - name: Screen flows (smart session, mock test, focus practice)
+        run: python3 tests/flows.py
+      - name: Random tapper (short run)
+        run: python3 tests/walker.py 250 1
