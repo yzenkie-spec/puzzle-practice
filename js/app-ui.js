@@ -71,6 +71,7 @@
       bar(td.time / PP.DAILY_GOAL * 100) + '<small class="mute">Daily goal: 20 minutes of practice</small>';
     const mc = PP.missCounts(), pk = d.fan.picks.length;
     h += '<div class="row"><button class="ghost" data-a="fantasyHome">🏆 Fantasy teams' + (pk ? ' <span class="pill">' + pk + ' pick' + (pk > 1 ? 's' : '') + '</span>' : '') + '</button><button class="ghost" data-a="jerseys">👕 Jerseys <span class="pill">' + Object.keys(d.jer.owned).length + '</span></button></div><div class="row"><button class="ghost" data-a="toons">🎭 Cartoons <span class="pill">' + Object.keys(d.toon.owned).length + '</span></button><button class="ghost" data-a="sticks">🏒 Sticks <span class="pill">' + Object.keys(d.stick.owned).length + '</span></button><button class="ghost" data-a="mistakes">🧠 Mistakes' + (mc.open ? ' <span class="pill">' + mc.open + '</span>' : '') + '</button></div>';
+    h += '<div class="row"><button class="ghost" data-a="rules">🏅 How to win rewards</button></div>';
     h += '<div class="card main"><b>⚡ Smart practice</b><p class="sub">The app picks the puzzle types you need most. Get 9 of every 10 right to win an all-time legend!</p><button class="go" data-a="smart">Start smart practice</button></div>';
     if (d.cur) {
       h += '<div class="card main"><b>📋 Mock test in progress</b><p class="sub">' + PP.mockAnswered(d.cur) + ' of ' + PP.mockTotal(d.cur) + ' questions answered. You can jump to any part.</p><button class="go" data-a="mockResume">Continue mock test</button></div>';

@@ -193,6 +193,26 @@
       set('<h1>Smart session complete!</h1><p class="sub">You got ' + r.ok + ' of ' + r.n + ' right. Get 9 of 10 right to win an all-time legend pick. Try the next 10!</p><div class="menu"><button class="go" data-a="cont">Keep practicing</button><button class="ghost wide" data-a="games">🎮 Play a mini-game</button></div>');
     }
   }
+  /* ---------------- how to win rewards ---------------- */
+  function rules() {
+    U.stop();
+    const st = D().streak, S = PP.STREAK;
+    const row = (icon, what, how) => '<div class="card"><div class="lvh"><b>' + icon + ' ' + what + '</b></div><p class="sub">' + how + '</p></div>';
+    set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">🏅 Rewards</span></div><h1>How to win rewards</h1>' +
+      '<div class="card main"><b>🔥 Right in a row now: ' + st.n + '</b><small class="mute">Best so far: ' + st.best + '</small></div>' +
+      '<h2>Streaks (any practice or mock test)</h2>' +
+      row('🎭', 'Cartoon character', 'Get ' + S.toon + ' answers right in a row.') +
+      row('🏒', 'Hockey stick', 'Get ' + S.stick + ' right in a row.') +
+      row('🌟', 'Special-edition stick', 'Get ' + S.special + ' right in a row. Then the count starts again from 0.') +
+      '<p class="sub mute">A wrong answer starts the count again. An answer after using a hint does not add to the count. In a mock test, your longest run of right answers is checked when you finish, and skipped questions break the run.</p>' +
+      '<h2>Levels and tests</h2>' +
+      row('🔥', 'Current NHL player', 'Pass a level in regular practice: get at least 8 of your last 10 answers right at that level, with no hints. Then you can draft a current player.') +
+      row('👑', 'All-time legend', 'Finish a smart practice session of 10 questions with 9 or more right. Then you can draft an all-time legend.') +
+      row('👕', 'Jersey', 'Score 90% or more on a mock test. 90% gives a Home jersey, 95% an Away jersey and 100% a Retro (special edition) jersey.') +
+      '<h2>Make your players look great</h2>' +
+      '<p class="sub">Open Fantasy teams, then Player collection, and tap a player to give him a jersey and a stick you have won. A jersey from his own team gives him a ✨.</p>' +
+      '<div class="menu"><button class="go" data-a="home">Back to practice</button></div>');
+  }
   /* ---------------- hockey sticks ---------------- */
   const stickSvg = t => PP.stickSvg(t);
   function stickCard(t, n, mini) {
@@ -348,7 +368,7 @@
     slotPick: v => { ed = ed === v ? null : v; fantasy(); const el = document.getElementById('picker'); if (el) el.scrollIntoView({ block: 'center' }); },
     slotSet: id => { if (ed) PP.fan.place(fs.pool, ed, id); ed = null; fantasy(); },
     slotClear: () => { if (ed) PP.fan.clear(fs.pool, ed); ed = null; fantasy(); }, slotClose: () => { ed = null; fantasy(); }, draftPool: v => { fs.pool = v; draft(); },
-    backup, bkCopy, bkFile, bkRestore, sessionDone, jerseys, jerLv: v => { jv.lv = v; jerseys(); }, toons, sticks, draftCur: () => { fs.pool = 'cur'; draft(); }, draftAll: () => { fs.pool = 'all'; draft(); }, toonShow: v => { tv.show = v; toons(); }, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
+    backup, bkCopy, bkFile, bkRestore, sessionDone, jerseys, jerLv: v => { jv.lv = v; jerseys(); }, toons, sticks, rules, draftCur: () => { fs.pool = 'cur'; draft(); }, draftAll: () => { fs.pool = 'all'; draft(); }, toonShow: v => { tv.show = v; toons(); }, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
     shootout, shoot, memory, memFlip,
     mistakes, missFilter: v => { mv.f = v; mv.page = 0; mv.open = null; mistakes(); }, missSec: v => { mv.sec = v; mv.page = 0; mv.open = null; mistakes(); },
     missPage: v => { mv.page += +v; mv.open = null; mistakes(); }, missOpen: v => { mv.open = mv.open === v ? null : v; mistakes(); },
