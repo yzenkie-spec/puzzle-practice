@@ -124,6 +124,7 @@ svg.pfsteps{display:block;width:100%;max-width:520px;margin:10px auto 0}
 .tname{width:100%;font:700 22px Teko,system-ui,sans-serif;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:8px 12px;margin:4px 0 10px}
 .pc{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--card);border:3px solid var(--line);border-radius:16px;padding:10px 8px 8px;text-align:center;min-width:0}
 .pc b{font:700 17px/1.15 Teko,system-ui,sans-serif}
+.pc .stickimg{width:64px;height:64px}.pc.mini .stickimg{width:48px;height:48px}.reveal .stickimg{width:96px;height:96px}
 .pc .jersey{width:64px;height:64px}
 .pc .pos{position:absolute;top:6px;left:6px;font-size:13px;font-weight:800;background:var(--sel);border-radius:8px;padding:0 7px}
 .pc .rt{position:absolute;top:6px;right:6px;font:700 20px Teko,system-ui,sans-serif}
@@ -201,20 +202,21 @@ h2{font-size:34px;font-weight:600;letter-spacing:.01em}
 </head>
 <body>
 <main id="app"></main>
-<script src="js/core.js?v=20"></script>
-<script src="js/gen-quant.js?v=20"></script>
-<script src="js/gen-verbal.js?v=20"></script>
-<script src="js/data-sc-e.js?v=20"></script>
-<script src="js/data-sc-a.js?v=20"></script>
-<script src="js/data-sc-c.js?v=20"></script>
-<script src="js/figures.js?v=20"></script>
-<script src="js/gen-figure.js?v=20"></script>
-<script src="js/gen-fold.js?v=20"></script>
-<script src="js/data-toon.js?v=20"></script>
-<script src="js/data-nhl.js?v=20"></script>
-<script src="js/app-state.js?v=20"></script>
-<script src="js/app-ui.js?v=20"></script>
-<script src="js/app-fun.js?v=20"></script>
+<script src="js/core.js?v=21"></script>
+<script src="js/gen-quant.js?v=21"></script>
+<script src="js/gen-verbal.js?v=21"></script>
+<script src="js/data-sc-e.js?v=21"></script>
+<script src="js/data-sc-a.js?v=21"></script>
+<script src="js/data-sc-c.js?v=21"></script>
+<script src="js/figures.js?v=21"></script>
+<script src="js/gen-figure.js?v=21"></script>
+<script src="js/gen-fold.js?v=21"></script>
+<script src="js/data-toon.js?v=21"></script>
+<script src="js/data-stick.js?v=21"></script>
+<script src="js/data-nhl.js?v=21"></script>
+<script src="js/app-state.js?v=21"></script>
+<script src="js/app-ui.js?v=21"></script>
+<script src="js/app-fun.js?v=21"></script>
 <script>PP.home();PP.warm();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
 </body>

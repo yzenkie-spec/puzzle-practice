@@ -23,7 +23,7 @@ with sync_playwright() as p:
         btn = pg.inner_text('.go'); pg.click('.go')
         if 'Finish session' in btn or n > 14: break
     check('F1a smart session ends after exactly 10 questions', n == 10, n)
-    check('F1b smart session rewards one cartoon', ev("()=>Object.values(PP.D().toon.owned).reduce((a,b)=>a+b,0)") == 1)
+    check('F1b smart session with 9 of 10 right: one all-time legend pick, and one cartoon from the 6-in-a-row', ev("()=>JSON.stringify([PP.D().fan.picks.map(k=>k.pool), Object.values(PP.D().toon.owned).reduce((a,b)=>a+b,0)])") == '[["all"],1]')
     check('F1c smart practice left level counters untouched', ev("()=>JSON.stringify(PP.D().sec)") == sec0 or all(v['e']['c']+v['a']['c']+v['c']['c']==0 for v in ev("()=>PP.D().sec").values()))
     # F2 mock test: answer everything correctly, finish -> exactly one draft pick, focus cleared
     pg.evaluate("()=>PP.home()")
@@ -39,7 +39,7 @@ with sync_playwright() as p:
             if b2: b2.click(); pg.wait_for_timeout(200)
         t = ev("()=>({tests:PP.D().tests.length,cur:PP.D().cur,picks:PP.D().fan.picks.length,focus:PP.D().focus})")
     check('F2a perfect mock test is saved', t['tests'] == 1, t)
-    check('F2b perfect mock test gives exactly one draft pick', t['picks'] - picks0 == 1, t)
+    check('F2b perfect mock test gives a retro jersey, a cartoon and both sticks, and no draft pick', t['picks'] == picks0 and ev("()=>JSON.stringify([Object.keys(PP.D().jer.owned).map(k=>k.split('|')[1]), PP.D().tests[0].rw.toon, PP.D().tests[0].rw.stick, PP.D().tests[0].rw.special])") == '[["c"],true,true,true]', t)
     check('F2c no focus practice after a perfect test', t['focus'] is None, t)
     # F3 partial test: reload midway keeps answers; unanswered count as misses; focus appears
     ev("()=>{PP.startMock(); const c=PP.D().cur; c.subs[0].picks[0]=PP.get(c.subs[0].ids[0]).ans; PP.save();}")
@@ -50,7 +50,7 @@ with sync_playwright() as p:
     check('F3b-0 first finish tap with unanswered questions does not finish the test', ev("()=>!!PP.D().cur"))
     ev("()=>PP.ui.A.mockFinishAll()"); pg.wait_for_timeout(300)   # second tap: finishes
     t = ev("()=>({tests:PP.D().tests.length,cur:PP.D().cur,focus:!!PP.D().focus,picks:PP.D().fan.picks.length})")
-    check('F3b partial mock finishes, no extra pick, focus practice created', t['tests'] == 2 and t['cur'] is None and t['focus'] and t['picks'] == 1, t)
+    check('F3b partial mock finishes, no extra pick, focus practice created', t['tests'] == 2 and t['cur'] is None and t['focus'] and t['picks'] == picks0, t)
     # F4 focus practice: wrong-with-hint answers do not count; finishing clears focus and unlocks next mock
     pg.evaluate("()=>PP.home()"); 
     b2 = pg.query_selector('[data-a=focusStart]') or None

@@ -14,7 +14,7 @@
 
   const freshTeam = name => ({ name, slots: {} });
   const fresh = () => ({ v: 3, bank: 2, rule: 2, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
-    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, toon: { owned: {}, hist: [] }, jer: { owned: {} }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
+    miss: {}, ask: {}, sess: { n: 0, ok: 0 }, toon: { owned: {}, hist: [] }, stick: { owned: {}, hist: [] }, streak: { n: 0, best: 0 }, jer: { owned: {} }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
@@ -45,6 +45,9 @@
   }
   if (!D.jer) D.jer = { owned: {} };
   if (!D.toon) D.toon = { owned: {}, hist: [] };
+  if (!D.stick) D.stick = { owned: {}, hist: [] };
+  if (!D.streak) D.streak = { n: 0, best: 0 };
+  D.fan.picks = D.fan.picks.map(k => typeof k === 'number' ? { pool: null, q: k } : k);   // older saves: a plain number = a pick for either team
   ['cur', 'all'].forEach(p => {   // team spots: 3 lines + goalie (older saves had 6 spots)
     const t = D.fan.teams[p], old = t.slots, ns = {};
     PP.SLOTS.forEach(k => { ns[k] = null; });
@@ -205,7 +208,7 @@
   /* Passing a level: his last 10 answers at that level must include at least 8 right (so wrong answers count, and a lucky
      streak is not enough). Hint-2 answers, mistake retries and smart practice never count. Smart practice uses the staircase
      (a right answer makes the next question harder, a wrong one easier); regular practice stays on the level being passed. */
-  PP.answerPractice = function (q, pick, secs, smart, noLevel) {
+  PP.answerPractice = function (q, pick, secs, smart, noLevel, helped) {
     const ok = pick === q.ans, qi = PP.LEVELS.indexOf(q.lv);
     const before = PP.LEVELS.filter(l => PP.passed(q.sec, l));
     if (!smart && !noLevel) {
@@ -223,12 +226,11 @@
     PP.record(q, ok, secs, 'p', pick);
     PP.addTime(Math.min(secs || 0, 120));
     const sessionDone = smart ? PP.sessionAdd(ok && !noLevel) : false;   // only smart practice counts toward a cartoon character
-    let jersey = null;   // every level passed (regular or smart) = 1 team jersey; easy = home, average = away, challenging = retro
-    if (newly.length) jersey = PP.winJersey(newly[newly.length - 1]);
-    const pickWon = !smart && newly.length > 0;               // regular practice: each level passed = 1 draft pick
-    if (pickWon) PP.addPicks(1, 0);
+    const pickWon = !smart && newly.length > 0;               // regular practice: each level passed = 1 current-player draft pick
+    if (pickWon) PP.addPicks(1, 'cur', 0);
+    const streak = PP.streakStep(ok, !!helped);
     PP.save();
-    return { ok, levelPassed: newly.length > 0, passedLv: newly[newly.length - 1], sessionDone, pickWon, jersey };
+    return { ok, levelPassed: newly.length > 0, passedLv: newly[newly.length - 1], sessionDone, pickWon, streak };
   };
 
   /* ---------- focus practice ---------- */
@@ -238,6 +240,7 @@
     return PP.pickQ(code, n.lv, { tag: twin, tags: n.tags });
   };
   PP.answerFocus = function (q, pick, secs, helped) {
+    const streak = PP.streakStep(pick === q.ans, !!helped);
     const ok = pick === q.ans, n = D.focus.needs[q.sec];
     if (ok && !helped) n.got++;   // an answer made with the 2-answer-removed hint does not count
     PP.record(q, ok, secs, 'f', pick);
@@ -247,7 +250,7 @@
     const allCleared = cleared && PP.focusLeft().length === 0;
     if (allCleared) D.focus = null;
     PP.save();
-    return { ok, cleared, allCleared, sessionDone };
+    return { ok, cleared, allCleared, sessionDone, streak };
   };
 
   /* ---------- mock test ---------- */
@@ -295,6 +298,7 @@
     });
     D.tests.unshift(test);
     D.cur = null;
+    test.longest = PP.longestRun(test);
     const needs = {};
     Object.keys(bad).forEach(code => {
       const cnt = { e: 0, a: 0, c: 0 };
@@ -314,7 +318,8 @@
   const SESSION = 10;
   PP.SESSION = SESSION;
   PP.sessionAdd = ok => { D.sess.n++; if (ok) D.sess.ok++; return D.sess.n >= SESSION; };
-  PP.addPicks = function (count, q) { for (let i = 0; i < count; i++) D.fan.picks.push(q || 0); PP.save(); };
+  /* a pick says which team it is for: 'cur' (current players), 'all' (all-time legends) or null (either, older saves) */
+  PP.addPicks = function (count, pool, q) { for (let i = 0; i < count; i++) D.fan.picks.push({ pool: pool || null, q: q || 0 }); PP.save(); };
   PP.winJersey = function (lv) {
     const codes = Object.keys(PP.JTEAMS), fresh = codes.filter(c => !D.jer.owned[c + '|' + lv]);
     const list = fresh.length ? fresh : codes, team = list[Math.floor(Math.random() * list.length)], key = team + '|' + lv;
@@ -322,32 +327,62 @@
     D.jer.owned[key] = (D.jer.owned[key] || 0) + 1;
     return { team, lv, key, dup };
   };
-  /* smart practice: every 10 questions, 80% or more right = 1 cartoon character */
+  /* ---------- the reward ladder ----------
+     5 right in a row = cartoon, 8 = hockey stick, 10 = special-edition stick (then the count starts again)
+     pass a level in regular practice = a current NHL player; a smart session of 10 with 9 right = an all-time legend
+     a mock test with 90% or more = a jersey (95% away, 100% retro) */
+  const STREAK_TOON = 5, STREAK_STICK = 8, STREAK_SPECIAL = 10;
+  PP.STREAK = { toon: STREAK_TOON, stick: STREAK_STICK, special: STREAK_SPECIAL };
   const TBASE = { common: 1, rare: 0.6, epic: 0.3, legend: 0.12 };
+  const give = (list, bag, tierOK) => {   // weighted pick that prefers things he does not have yet
+    const cand = list.filter(tierOK), w = t => TBASE[t.tier] * (bag.owned[t.id] ? 0.25 : 1), tot = cand.reduce((x, t) => x + w(t), 0);
+    let r = Math.random() * tot, it = cand[cand.length - 1];
+    for (const t of cand) { r -= w(t); if (r <= 0) { it = t; break; } }
+    const dup = !!bag.owned[it.id];
+    bag.owned[it.id] = (bag.owned[it.id] || 0) + 1;
+    bag.hist.unshift({ id: it.id, t: Date.now() }); bag.hist = bag.hist.slice(0, 20);
+    return { item: it, dup };
+  };
+  PP.giveToon = () => { const r = give(PP.TOONS, D.toon, () => true); return { toon: r.item, dup: r.dup }; };
+  PP.giveStick = special => { const r = give(PP.STICKS, D.stick, t => special ? (t.tier === 'epic' || t.tier === 'legend') : (t.tier === 'common' || t.tier === 'rare')); return { stick: r.item, dup: r.dup, special: !!special }; };
+  /* one answer: a right answer without a hint adds to the streak; a wrong answer ends it */
+  PP.streakStep = function (ok, helped) {
+    const s = D.streak;
+    if (!ok) { s.n = 0; return { n: 0 }; }
+    if (helped) return { n: s.n };
+    s.n++; if (s.n > s.best) s.best = s.n;
+    const out = { n: s.n };
+    if (s.n === STREAK_TOON) out.toon = PP.giveToon();
+    else if (s.n === STREAK_STICK) out.stick = PP.giveStick(false);
+    else if (s.n === STREAK_SPECIAL) { out.stick = PP.giveStick(true); s.n = 0; out.restart = true; }
+    return out;
+  };
+  /* longest run of right answers in a test, in the order they were answered; a skipped question breaks the run */
+  PP.longestRun = function (test) {
+    let best = 0, run = 0;
+    test.subs.forEach(s => s.items.forEach(x => { if (x.ok) { run++; if (run > best) best = run; } else run = 0; }));
+    return best;
+  };
+  /* smart practice: every 10 questions, 9 or more right = 1 all-time legend pick */
   PP.claimSession = function () {
     const n = D.sess.n, ok = D.sess.ok, acc = n ? ok / n : 0;
     D.sess = { n: 0, ok: 0 };
-    let toon = null, dup = false;
-    if (acc >= 0.8) {
-      const boost = acc >= 1 ? 3 : acc >= 0.9 ? 1.8 : 1;
-      const w = t => TBASE[t.tier] * (t.tier === 'common' ? 1 : boost) * (D.toon.owned[t.id] ? 0.25 : 1);
-      const list = PP.TOONS, tot = list.reduce((s, t) => s + w(t), 0);
-      let r = Math.random() * tot;
-      toon = list[list.length - 1];
-      for (const t of list) { r -= w(t); if (r <= 0) { toon = t; break; } }
-      dup = !!D.toon.owned[toon.id];
-      D.toon.owned[toon.id] = (D.toon.owned[toon.id] || 0) + 1;
-      D.toon.hist.unshift({ id: toon.id, t: Date.now() }); D.toon.hist = D.toon.hist.slice(0, 20);
-    }
+    const pick = n >= SESSION && acc >= 0.9;
+    if (pick) PP.addPicks(1, 'all', 1);
     PP.save();
-    return { n, ok, acc, toon, dup };
+    return { n, ok, acc, pick };
   };
-  /* mock test: 90% or more = 1 draft pick */
+  /* mock test: 90% or more = a jersey; the longest streak pays cartoon / stick / special stick once each */
   PP.mockReward = function (test) {
-    const pct = PP.testTotal(test) / PP.testCount(test);
-    const picks = pct >= 0.9 ? 1 : 0;
-    test.rw = picks; if (picks) PP.addPicks(picks, 2);
-    return { picks, q: 2 };
+    const pct = PP.testTotal(test) / PP.testCount(test), run = test.longest || PP.longestRun(test);
+    const out = { jersey: null, toon: null, stick: null, special: null, run };
+    if (pct >= 0.9) out.jersey = PP.winJersey(pct >= 1 ? 'c' : pct >= 0.95 ? 'a' : 'e');
+    if (run >= STREAK_TOON) out.toon = PP.giveToon();
+    if (run >= STREAK_STICK) out.stick = PP.giveStick(false);
+    if (run >= STREAK_SPECIAL) out.special = PP.giveStick(true);
+    test.rw = { jersey: out.jersey ? out.jersey.key : null, toon: !!out.toon, stick: !!out.stick, special: !!out.special };
+    PP.save();
+    return out;
   };
   const BASE = { common: 1, rare: 0.6, epic: 0.3, legend: 0.12 };
   const BOOST = [{ common: 1, rare: 1, epic: 1, legend: 1 }, { common: 1, rare: 1.5, epic: 2, legend: 3 }, { common: 1, rare: 2.5, epic: 4, legend: 7 }];
@@ -356,15 +391,17 @@
   PP.fan = {
     team,
     owned: id => !!D.fan.owned[id],
+    pickIdx: pool => D.fan.picks.findIndex(k => !k.pool || k.pool === pool),
+    pickCount: pool => D.fan.picks.filter(k => !k.pool || k.pool === pool).length,
     placedAt: (pool, id) => PP.SLOTS.find(s => team(pool).slots[s] === id) || null,
     onTeam: (pool, id) => !!PP.fan.placedAt(pool, id),
     eligible: (pool, p) => !D.fan.owned[p.id],     // any player not collected yet can be drafted
     nextSlot: (pool, pos) => slotsFor(pos).find(s => !team(pool).slots[s]) || null,
     offer(pool) {   // three players to choose from, saved so a reload gives the same choices
-      if (!D.fan.picks.length) return null;
+      if (PP.fan.pickIdx(pool) < 0) return null;
       const saved = D.fan.offer[pool];
       if (saved && saved.length && saved.every(id => PP.fan.eligible(pool, PP.NHL_BY_ID[id]))) return saved.map(id => PP.NHL_BY_ID[id]);
-      const q = D.fan.picks[0];
+      const q = D.fan.picks[PP.fan.pickIdx(pool)].q;
       const need = {};   // positions that still have empty lineup spots
       PP.SLOTS.forEach(s => { if (!team(pool).slots[s]) need[PP.SLOT_POS[s]] = 1; });
       let cand = PP.NHL[pool].filter(p => PP.fan.eligible(pool, p));
@@ -381,11 +418,12 @@
     /* draft = add to the collection, and put him in the first empty spot for his position */
     draft(pool, id) {
       const p = PP.NHL_BY_ID[id];
-      if (!D.fan.picks.length || !PP.fan.eligible(pool, p)) return null;
+      const pi = PP.fan.pickIdx(pool);
+      if (pi < 0 || !PP.fan.eligible(pool, p)) return null;
       D.fan.owned[p.id] = 1;
       const slot = PP.fan.nextSlot(pool, p.pos);
       if (slot) team(pool).slots[slot] = p.id;
-      D.fan.picks.shift(); D.fan.offer = {};
+      D.fan.picks.splice(pi, 1); D.fan.offer = {};
       D.fan.hist.unshift({ pool, id: p.id, old: null, ts: Date.now() });
       D.fan.hist = D.fan.hist.slice(0, 40);
       PP.save();

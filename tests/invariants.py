@@ -63,7 +63,7 @@ with sync_playwright() as p:
     check('R3 pools: unique ids, valid answers, distinct options, no repeats before exhaustion', r == [], r)
 
     # R4: backup code round trip is exact, including after play
-    r = ev("""async()=>{ PP.reset(); for(let i=0;i<150;i++){ const s=PP.SECS[i%9].code, r=PP.nextQ(s,PP.askLevel(s)); if(!r.q)continue; PP.answerPractice(r.q, Math.random()<.7?r.q.ans:0, 4, i%3==0, false);} PP.claimSession(); PP.winJersey('e'); PP.addPicks(2,0);
+    r = ev("""async()=>{ PP.reset(); for(let i=0;i<150;i++){ const s=PP.SECS[i%9].code, r=PP.nextQ(s,PP.askLevel(s)); if(!r.q)continue; PP.answerPractice(r.q, Math.random()<.7?r.q.ans:0, 4, i%3==0, false);} PP.claimSession(); PP.winJersey('e'); PP.addPicks(2,'cur',0);
       const code=await PP.exportCode(), back=await PP.parseCode(code); return JSON.stringify(back)===JSON.stringify(PP.D()); }""")
     check('R4 backup then restore gives identical data', r is True, r)
 
@@ -72,19 +72,25 @@ with sync_playwright() as p:
       for(const c of bads){ try{ await PP.parseCode(c); ok=false; }catch(e){} } return ok && before===JSON.stringify(PP.D()); }""")
     check('R5 bad backup codes are rejected safely', r is True, r)
 
-    # R6: rewards given once: jersey/pick only on a real level pass; session reward once per 10
+    # R6: rewards given once: a current-player pick only on a real level pass (no jersey); smart session of 10 with 9 right = one legend pick
     r = ev("""()=>{ PP.reset(); const D=PP.D(); let bad=[];
       let picks0=D.fan.picks.length, j0=Object.values(D.jer.owned).reduce((a,b)=>a+b,0);
       const s='VA'; let passes=0;
       for(let i=0;i<500&&passes<3;i++){ const r=PP.nextQ(s,PP.askLevel(s)); const res=PP.answerPractice(r.q,r.q.ans,3,false,false); if(res.levelPassed) passes++; }
       const j1=Object.values(D.jer.owned).reduce((a,b)=>a+b,0);
       if(D.fan.picks.length-picks0!==3) bad.push('picks '+(D.fan.picks.length-picks0)+' for 3 passes');
-      if(j1-j0!==3) bad.push('jerseys '+(j1-j0)+' for 3 passes');
-      // smart: 10 perfect answers -> exactly one claim reward
-      PP.reset(); let done=0, tc=0; const D2=PP.D();
-      for(let i=0;i<25;i++){ const sc=PP.smartSection(), r=PP.nextQ(sc,'e'); const res=PP.answerPractice(r.q,r.q.ans,3,true,false); if(res.sessionDone){ done++; const c=PP.claimSession(); if(c.toon) tc++; } }
-      if(done!==2||tc!==2) bad.push('smart sessions '+done+' toons '+tc);
-      PP.sessionAdd(true); let last=false; for(let i=0;i<9;i++) last=PP.sessionAdd(true); const c1=PP.claimSession(), again=PP.claimSession(); if(!c1.toon) bad.push('perfect session gave no toon'); if(again.toon) bad.push('claim twice gave a toon');
+      if(!D.fan.picks.every(k=>k.pool==='cur')) bad.push('level-pass picks are not current-player picks');
+      if(j1-j0!==0) bad.push('jerseys '+(j1-j0)+' from level passes');
+      PP.reset(); let done=0, pk=0; const D2=PP.D();
+      for(let i=0;i<25;i++){ const sc=PP.smartSection(), r=PP.nextQ(sc,'e'); const res=PP.answerPractice(r.q,r.q.ans,3,true,false); if(res.sessionDone){ done++; const c=PP.claimSession(); if(c.pick) pk++; } }
+      if(done!==2||pk!==2) bad.push('smart sessions '+done+' legend picks '+pk);
+      if(!D2.fan.picks.every(k=>k.pool==='all')) bad.push('session picks are not legend picks');
+      PP.reset(); PP.sessionAdd(true); for(let i=0;i<8;i++) PP.sessionAdd(false); PP.sessionAdd(false);
+      if(PP.claimSession().pick) bad.push('1 of 10 gave a pick');
+      PP.reset(); for(let i=0;i<9;i++) PP.sessionAdd(true); PP.sessionAdd(false);
+      const c1=PP.claimSession(), again=PP.claimSession(); if(!c1.pick) bad.push('9 of 10 gave no pick'); if(again.pick) bad.push('claim twice gave a pick');
+      PP.reset(); for(let i=0;i<8;i++) PP.sessionAdd(true); for(let i=0;i<2;i++) PP.sessionAdd(false);
+      if(PP.claimSession().pick) bad.push('8 of 10 gave a pick');
       return bad; }""")
     check('R6 rewards are given exactly once per achievement', r == [], r)
 
@@ -97,7 +103,7 @@ with sync_playwright() as p:
         const t=PP.finishMock(); const exp=c.subs.reduce((n,s)=>n+s.ids.filter((id,i)=>s.picks[i]===PP.get(id).ans).length,0);
         if(PP.testTotal(t)!==exp) bad.push('score mismatch '+PP.testTotal(t)+' vs '+exp);
         if(D.cur!==null) bad.push('cur not cleared');
-        const r1=PP.mockReward(t); if(r1.picks>1) bad.push('multi pick');
+        const r1=PP.mockReward(t); if(D.fan.picks.length) bad.push('mock gave a draft pick');
         if(D.focus){ D.focus=null; } }
       return bad.slice(0,8); }""")
     check('R7 mock tests: 15 per part, no duplicates, correct score, cleared after finish', r == [], r)
@@ -161,6 +167,56 @@ with sync_playwright() as p:
         need[s].forEach(t=>{ if(!seen.has(t)) bad.push(s+' never asks '+t); }); }
       return bad; }""")
     check('R13 figure matrices and classification: 100 per level, 5 different pictures, every puzzle type used', r == [], r[:5])
+
+    # R14: streak ladder: 5 cartoon, 8 stick, 10 special stick then restart; wrong resets; hints do not add
+    r = ev("""()=>{ PP.reset(); const D=PP.D(), bad=[]; const t=()=>({toon:Object.keys(D.toon.owned).length, stick:Object.keys(D.stick.owned).length});
+      let got=[]; for(let i=1;i<=10;i++){ const o=PP.streakStep(true,false); got.push([i,!!o.toon,!!o.stick,!!(o.stick&&o.stick.special)]); }
+      const exp=[[1,0,0,0],[2,0,0,0],[3,0,0,0],[4,0,0,0],[5,1,0,0],[6,0,0,0],[7,0,0,0],[8,0,1,0],[9,0,0,0],[10,0,1,1]];
+      if(JSON.stringify(got.map(g=>g.map(Number)))!==JSON.stringify(exp)) bad.push('ladder '+JSON.stringify(got));
+      const ps=PP.STICKS.filter(x=>D.stick.owned[x.id]); if(ps.length<2) bad.push('sticks not stored');
+      if(D.streak.n!==0) bad.push('no restart after 10: '+D.streak.n);
+      PP.reset(); for(let i=0;i<4;i++) PP.streakStep(true,false); PP.streakStep(false,false); const o5=PP.streakStep(true,false);
+      if(o5.toon||PP.D().streak.n!==1) bad.push('wrong answer did not reset');
+      PP.reset(); for(let i=0;i<4;i++) PP.streakStep(true,false); const h=PP.streakStep(true,true); if(h.toon||PP.D().streak.n!==4) bad.push('hinted answer moved the streak');
+      const w=PP.streakStep(false,true); if(PP.D().streak.n!==0) bad.push('hinted wrong answer did not reset');
+      PP.reset(); let toons=0; for(let i=0;i<20;i++){ const o=PP.streakStep(true,false); if(o.toon) toons++; } if(toons!==2) bad.push('20 straight gave '+toons+' cartoons');
+      PP.reset(); const r2=PP.nextQ('VA','e'); const before=PP.D().streak.n; const res=PP.answerPractice(r2.q,r2.q.ans,3,false,false,false); if(PP.D().streak.n!==before+1) bad.push('practice answer did not count');
+      const r3=PP.nextQ('VA',PP.askLevel('VA')); PP.answerPractice(r3.q,r3.q.ans,3,false,false,true); if(PP.D().streak.n!==before+1) bad.push('hinted practice answer counted');
+      PP.answerPractice(r3.q,(r3.q.ans+1)%5,3,false,false,false); if(PP.D().streak.n!==0) bad.push('wrong practice answer kept the streak');
+      return bad; }""")
+    check('R14 streak ladder: 5 cartoon, 8 stick, 10 special stick; wrong answers reset; hints do not count', r == [], r)
+
+    # R15: mock test rewards: jersey at 90% (variant by score), streak payouts from the longest run, no draft pick
+    r = ev("""()=>{ PP.reset(); const D=PP.D(), bad=[];
+      const mk=(wrongAt)=>({subs:[{items:Array.from({length:30},(_,i)=>({ok:!wrongAt.includes(i)}))}]});
+      const run=w=>PP.longestRun(mk(w));
+      if(run([])!==30) bad.push('run all right '+run([])); if(run([4,9])!==15&&run([4,9])!==20) bad.push('run split '+run([4,9])); if(run(Array.from({length:30},(_,i)=>i))!==0) bad.push('run none');
+      if(run([4,9,14,19,24,29])!==4) bad.push('run of 4 = '+run([4,9,14,19,24,29]));
+      const full=(n,right,longest)=>({subs:[{items:Array.from({length:n},(_,i)=>({ok:i<right}))}],longest});
+      const fake=(pct,longest)=>{ const n=135, right=Math.round(n*pct); return {subs:[{score:right,items:Array.from({length:n},(_,i)=>({ok:i<right}))}],longest}; };
+      let o=PP.mockReward(fake(0.89,4)); if(o.jersey||o.toon||o.stick||o.special) bad.push('89% with run 4 paid '+JSON.stringify(Object.keys(o).filter(k=>o[k]&&k!=='run')));
+      o=PP.mockReward(fake(0.9,5)); if(!o.jersey||o.jersey.lv!=='e'||!o.toon||o.stick) bad.push('90%/5 wrong');
+      o=PP.mockReward(fake(0.96,8)); if(!o.jersey||o.jersey.lv!=='a'||!o.toon||!o.stick||o.special) bad.push('96%/8 wrong');
+      o=PP.mockReward(fake(1,10)); if(!o.jersey||o.jersey.lv!=='c'||!o.toon||!o.stick||!o.special) bad.push('100%/10 wrong');
+      o=PP.mockReward(fake(0.5,9)); if(o.jersey||!o.toon||!o.stick||o.special) bad.push('50%/9 wrong');
+      if(D.fan.picks.length) bad.push('mock gave draft picks');
+      return bad; }""")
+    check('R15 mock test rewards: jersey at 90%, streak payouts from the longest run', r == [], r)
+
+    # R16: picks are typed: current-player picks only draft current players, legend picks only legends; older numeric picks work for both; saves migrate
+    r = ev("""()=>{ PP.reset(); const D=PP.D(), bad=[];
+      PP.addPicks(1,'cur',0); if(PP.fan.pickCount('cur')!==1||PP.fan.pickCount('all')!==0) bad.push('counts');
+      if(PP.fan.offer('all')) bad.push('legend offer from a current pick');
+      const off=PP.fan.offer('cur'); if(!off||off.length!==3||off.some(p=>p.pool!=='cur')) bad.push('offer not current players');
+      if(PP.fan.draft('all', PP.NHL.all[0].id)) bad.push('drafted legend with a current pick');
+      if(!PP.fan.draft('cur', off[0].id)) bad.push('draft failed'); if(D.fan.picks.length) bad.push('pick not used');
+      PP.addPicks(1,'all',1); if(PP.fan.pickCount('cur')!==0) bad.push('legend pick counted for current');
+      D.fan.picks=[3-3, 2]; localStorage.setItem('pp3', JSON.stringify(D));
+      return bad; }""")
+    pg.reload(); pg.wait_for_selector('h1')
+    r2 = ev("""()=>{ const D=PP.D(), bad=[]; if(!D.fan.picks.every(k=>typeof k==='object'&&k&&k.pool===null)) bad.push('numbers not migrated '+JSON.stringify(D.fan.picks));
+      if(PP.fan.pickCount('cur')!==2||PP.fan.pickCount('all')!==2) bad.push('old picks work for either team'); if(!D.stick||!D.streak) bad.push('missing new fields'); return bad; }""")
+    check('R16 draft picks are typed by team and older picks migrate', r == [] and r2 == [], [r, r2])
 
     check('no page errors during all checks', errs == [], errs[:3])
     b.close()

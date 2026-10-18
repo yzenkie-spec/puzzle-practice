@@ -70,8 +70,8 @@
       '<div class="badges"><span><b>' + k + '</b>day streak</span><span><b>' + d.stars + '</b>goals</span><span><b>' + Math.round(td.time / 60) + '</b>min today</span></div>' +
       bar(td.time / PP.DAILY_GOAL * 100) + '<small class="mute">Daily goal: 20 minutes of practice</small>';
     const mc = PP.missCounts(), pk = d.fan.picks.length;
-    h += '<div class="row"><button class="ghost" data-a="fantasyHome">🏆 Fantasy teams' + (pk ? ' <span class="pill">' + pk + ' pick' + (pk > 1 ? 's' : '') + '</span>' : '') + '</button><button class="ghost" data-a="jerseys">👕 Jerseys <span class="pill">' + Object.keys(d.jer.owned).length + '</span></button></div><div class="row"><button class="ghost" data-a="toons">🎭 Cartoons <span class="pill">' + Object.keys(d.toon.owned).length + '</span></button><button class="ghost" data-a="mistakes">🧠 Mistakes' + (mc.open ? ' <span class="pill">' + mc.open + '</span>' : '') + '</button></div>';
-    h += '<div class="card main"><b>⚡ Smart practice</b><p class="sub">The app picks the puzzle types you need most. Get 8 of every 10 right to win a cartoon character!</p><button class="go" data-a="smart">Start smart practice</button></div>';
+    h += '<div class="row"><button class="ghost" data-a="fantasyHome">🏆 Fantasy teams' + (pk ? ' <span class="pill">' + pk + ' pick' + (pk > 1 ? 's' : '') + '</span>' : '') + '</button><button class="ghost" data-a="jerseys">👕 Jerseys <span class="pill">' + Object.keys(d.jer.owned).length + '</span></button></div><div class="row"><button class="ghost" data-a="toons">🎭 Cartoons <span class="pill">' + Object.keys(d.toon.owned).length + '</span></button><button class="ghost" data-a="sticks">🏒 Sticks <span class="pill">' + Object.keys(d.stick.owned).length + '</span></button><button class="ghost" data-a="mistakes">🧠 Mistakes' + (mc.open ? ' <span class="pill">' + mc.open + '</span>' : '') + '</button></div>';
+    h += '<div class="card main"><b>⚡ Smart practice</b><p class="sub">The app picks the puzzle types you need most. Get 9 of every 10 right to win an all-time legend!</p><button class="go" data-a="smart">Start smart practice</button></div>';
     if (d.cur) {
       h += '<div class="card main"><b>📋 Mock test in progress</b><p class="sub">' + PP.mockAnswered(d.cur) + ' of ' + PP.mockTotal(d.cur) + ' questions answered. You can jump to any part.</p><button class="go" data-a="mockResume">Continue mock test</button></div>';
     } else if (d.focus) {
@@ -187,20 +187,21 @@
       const q = P.q, ok = i === q.ans, secs = (Date.now() - P.t0) / 1000;
       let res, btn = 'Next question', act = 'next';
       if (P.mode === 'practice') {
-        res = PP.answerPractice(q, i, secs, P.smart, !!P.fromMiss || P.hint >= 2);
+        res = PP.answerPractice(q, i, secs, P.smart, !!P.fromMiss || P.hint >= 2, P.hint >= 1);
         if (res.levelPassed) { btn = 'Level passed!'; act = 'levelUp'; }
       } else {
-        res = PP.answerFocus(q, i, secs, P.hint >= 2);
+        res = PP.answerFocus(q, i, secs, P.hint >= 1);
         if (res.allCleared) { btn = 'All done!'; act = 'focusDone'; }
         else if (res.cleared) { btn = 'Next puzzle type'; }
       }
       if (!ok) { P.twin = q.tag || null; P.twinLv = q.lv; }
-      if (res.levelPassed) { P.passedLv = res.passedLv; P.jersey = res.jersey; }
+      if (res.levelPassed) { P.passedLv = res.passedLv; }
       let extra = '';
       if (P.fromMiss) {
         btn = ok ? 'I understand it now ✅' : 'Try another like it'; act = ok ? 'missUnderstood' : 'next';
         extra = '<button class="ghost wide" data-a="mistakes" style="margin-top:10px">Back to mistakes</button>';
       } else if (res.sessionDone && !res.levelPassed && !res.allCleared) { btn = 'Finish session 🎉'; act = 'sessionDone'; }
+      extra += streakHTML(res.streak);
       const hb = document.getElementById('hintbtn'); if (hb) hb.remove();
       document.getElementById('opts').outerHTML = optsHTML(q, i, true);
       document.getElementById('fb').innerHTML = '<div class="fb ' + (ok ? 'good' : 'bad') + '"><b>' + (ok ? rnd(CHEER) : rnd(TRY)) + '</b> ' + (ok ? '' : 'The right answer is ' + PP.LETTERS[q.ans] + '. ') + q.exp + '</div><button class="go" data-a="' + act + '">' + btn + '</button>' + extra;
@@ -209,13 +210,20 @@
     }
     mockPick(i);
   }
+  function streakHTML(st) {
+    if (!st) return '';
+    let h = '';
+    if (st.toon) h += '<div class="card main"><b>🔥 ' + PP.STREAK.toon + ' in a row! A cartoon joins your collection!</b><div class="reveal">' + PP.ui.toonCard(st.toon.toon, 1, false) + '</div><small class="mute">' + (st.toon.dup ? 'You had this one already, so you have a spare!' : 'New character! 🌟') + '</small><button class="ghost wide" data-a="toons">🎭 See my cartoons</button></div>';
+    if (st.stick) h += '<div class="card main"><b>🔥 ' + (st.stick.special ? PP.STREAK.special + ' in a row! A special-edition stick!' : PP.STREAK.stick + ' in a row! You won a hockey stick!') + '</b><div class="reveal">' + PP.ui.stickCard(st.stick.stick, 1, false) + '</div><small class="mute">' + (st.stick.dup ? 'You had this one already, so you have a spare!' : 'New stick! 🌟') + '</small><button class="ghost wide" data-a="sticks">🏒 See my sticks</button></div>';
+    if (!h && st.n >= 2) h = '<small class="mute">🔥 ' + st.n + ' right in a row. 5 = cartoon, ' + PP.STREAK.stick + ' = stick, ' + PP.STREAK.special + ' = special stick!</small>';
+    return h;
+  }
   function next() { if (P.mode === 'practice') nextPractice(); else nextFocus(); }
   function levelUp() {
     const code = P.code, lv = P.passedLv || P.lv, i = PP.LEVELS.indexOf(lv), nx = PP.LEVELS[i + 1];
     confetti();
     set('<h1>Level passed! 🎉</h1><p class="sub">' + secName(code) + ' · ' + lvName(lv) + ' is done. ' + (nx ? lvName(nx) + ' is now open.' : 'You have passed every level in this puzzle type.') + '</p>' +
-      (P.jersey ? '<div class="card main"><b>👕 You won a jersey!</b><div class="reveal">' + PP.ui.jerseyCard(P.jersey, false) + '</div>' + (P.jersey.dup ? '<small class="mute">You already had this one, so you have a spare!</small>' : '<small class="mute">New for your collection! 🌟</small>') + '<button class="ghost wide" data-a="jerseys">👕 See my jerseys</button></div>' : '') +
-      (P.smart ? '' : '<div class="card main"><b>🏒 You earned a draft pick!</b><p class="sub">' + D().fan.picks.length + ' pick' + (D().fan.picks.length > 1 ? 's' : '') + ' ready to use.</p><button class="go" data-a="draft">🏆 Draft a player</button></div>') + '<div class="menu">' +
+      (P.smart ? '' : '<div class="card main"><b>🏒 You earned a current-player pick!</b><p class="sub">Draft a current NHL player for your team.</p><button class="go" data-a="draftCur">🏆 Draft a player</button></div>') + '<div class="menu">' +
       (P.smart ? '<button class="go" data-a="smartGo">Keep going</button>' : (nx ? '<button class="go" data-a="practice" data-v="' + code + '">Start ' + lvName(nx) + '</button>' : '')) +
       (P.smart && D().sess.n >= PP.SESSION ? '<button class="go" data-a="sessionDone">Finish session 🎉 and see your reward</button>' : '') +
       '<button class="ghost wide" data-a="' + (P.smart ? 'home' : 'sec') + '" data-v="' + code + '">' + (P.smart ? 'Home' : 'Back to ' + secName(code)) + '</button></div>');
@@ -306,9 +314,11 @@
     const rows = t.subs.map(s => '<tr><td>' + secIcon(s.code) + ' ' + secName(s.code) + '</td><td>' + s.score + ' / ' + s.items.length + '</td></tr>').join('');
     const fu = t.subs.reduce((n, s) => n + s.items.filter(x => x.fu).length, 0), fuOk = t.subs.reduce((n, s) => n + s.items.filter(x => x.fu && x.ok).length, 0);
     if (PP.testTotal(t) >= PP.testCount(t) * 0.7) confetti();
-    const rw = PP.mockReward(t);
+    const rw = PP.mockReward(t), pct = Math.round(PP.testTotal(t) / PP.testCount(t) * 100);
+    if (rw.jersey || rw.toon || rw.stick || rw.special) confetti();
     set('<h1>Test finished! 🎉</h1><p class="sub">Score: ' + PP.testTotal(t) + ' of ' + PP.testCount(t) + '</p><div class="card"><table class="tbl"><tbody>' + rows + '</tbody></table></div>' +
-      (rw.picks ? '<div class="card main"><b>🏒 90% or more: you earned a draft pick!</b><p class="sub">Draft an NHL player for your fantasy teams.</p><button class="go" data-a="draft">🏆 Draft a player</button></div>' : '<div class="card"><b>🏒 Draft pick: score 90% or more</b><p class="sub">You scored ' + Math.round(PP.testTotal(t) / PP.testCount(t) * 100) + '%. Keep practicing and try again next test!</p></div>') +
+      (rw.jersey ? '<div class="card main"><b>👕 90% or more: you won a jersey!</b><div class="reveal">' + PP.ui.jerseyCard(rw.jersey, false) + '</div><small class="mute">' + (rw.jersey.dup ? 'You had this one already, so you have a spare!' : 'New for your collection! 🌟') + '</small><button class="ghost wide" data-a="jerseys">👕 See my jerseys</button></div>' : '<div class="card"><b>👕 Jersey: score 90% or more</b><p class="sub">You scored ' + pct + '%. Keep practicing and try again!</p></div>') +
+      (rw.run >= PP.STREAK.toon ? '<div class="card main"><b>🔥 Longest streak: ' + rw.run + ' right in a row!</b>' + (rw.toon ? '<div class="reveal">' + PP.ui.toonCard(rw.toon.toon, 1, false) + '</div>' : '') + (rw.stick ? '<div class="reveal">' + PP.ui.stickCard(rw.stick.stick, 1, false) + '</div>' : '') + (rw.special ? '<div class="reveal">' + PP.ui.stickCard(rw.special.stick, 1, false) + '</div>' : '') + '<button class="ghost wide" data-a="sticks">🏒 See my sticks</button><button class="ghost wide" data-a="toons">🎭 See my cartoons</button></div>' : '<div class="card"><b>🔥 Longest streak: ' + rw.run + '</b><p class="sub">Get ' + PP.STREAK.toon + ' right in a row to win a cartoon, ' + PP.STREAK.stick + ' for a stick, ' + PP.STREAK.special + ' for a special stick.</p></div>') +
       (fu ? '<div class="card"><b>🔁 Check-up questions</b><p class="sub">You got ' + fuOk + ' of ' + fu + ' right on the questions that matched your mistakes from last time.</p></div>' : '') +
       (D().focus ? '<div class="card main"><b>🎯 Next step: focus practice</b><p class="sub">You missed questions in ' + Object.keys(D().focus.needs).length + ' puzzle type(s). Finish focus practice to unlock the next mock test.</p></div><div class="menu"><button class="go" data-a="focusStart">Start focus practice</button>' : '<div class="card main"><b>Perfect score! 🏆</b><p class="sub">No focus practice needed.</p></div><div class="menu">') +
       '<button class="ghost wide" data-a="reviewTest" data-v="' + t.id + '">Review every question</button><button class="ghost wide" data-a="home">Home</button></div>');
