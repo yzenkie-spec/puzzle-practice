@@ -1,0 +1,9 @@
+# Netlify settings: this is a plain website with nothing to build.
+[build]
+  publish = "."
+
+# Always check for a new version of the offline helper
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
