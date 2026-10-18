@@ -3,25 +3,26 @@
 (function () {
   const PP = window.PP;
   const KEY = 'pp3', OLD = 'pp2';
-  const NEED = 10;          // correct answers to pass a level
+  const WINDOW = 10;        // a level is judged on his last 10 answers at that level
+  const PASS_RIGHT = 8;     // ...and passed when at least 8 of them are right (no hints)
+  const NEED = WINDOW;
   const FOCUS_NEED = 5;     // correct answers to clear a focus section
   const PER_LEVEL = { e: 5, a: 5, c: 5 };   // mock part: 15 questions, easy -> challenging
   const MOCK_SECONDS = 600; // 10 minutes per part, as in the published CCAT structure
   const DAILY_GOAL = 20 * 60;
-  PP.NEED = NEED; PP.FOCUS_NEED = FOCUS_NEED; PP.MOCK_SECONDS = MOCK_SECONDS; PP.PER_LEVEL = PER_LEVEL; PP.DAILY_GOAL = DAILY_GOAL;
+  PP.NEED = NEED; PP.WINDOW = WINDOW; PP.PASS_RIGHT = PASS_RIGHT; PP.FOCUS_NEED = FOCUS_NEED; PP.MOCK_SECONDS = MOCK_SECONDS; PP.PER_LEVEL = PER_LEVEL; PP.DAILY_GOAL = DAILY_GOAL;
 
   const freshTeam = name => ({ name, slots: {} });
-  const fresh = () => ({ v: 3, bank: 2, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
+  const fresh = () => ({ v: 3, bank: 2, rule: 2, sec: {}, used: {}, tag: {}, log: [], time: {}, tests: [], cur: null, focus: null, days: [], stars: 0, tid: 1,
     miss: {}, ask: {}, sess: { n: 0, ok: 0 }, toon: { owned: {}, hist: [] }, jer: { owned: {} }, fan: { picks: [], owned: {}, offer: {}, teams: { cur: freshTeam('My Current Stars'), all: freshTeam('My All-Time Legends') }, hist: [] } });
   let D = fresh();
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
-    if (r && r.v === 3) { D = Object.assign(fresh(), r); if (!r.bank) D.bank = 1; }   // saves from before question bank 2
+    if (r && r.v === 3) { D = Object.assign(fresh(), r); if (!r.bank) D.bank = 1; if (r.rule !== 2) D.rule = 1; }   // saves from before question bank 2
     else {
       const o = JSON.parse(localStorage.getItem(OLD));
       if (o && o.v === 2) {   // keep level progress from the first version; old mock tests used a different question bank
         D.stars = o.stars || 0; D.days = o.days || []; D.tid = (o.tid || 1);
-        Object.keys(o.sec || {}).forEach(c => { D.sec[c] = {}; PP.LEVELS.forEach(l => { const x = (o.sec[c] || {})[l] || {}; D.sec[c][l] = { c: x.c || 0, w: x.w || 0 }; }); });
       }
     }
   } catch (e) {}
@@ -39,10 +40,9 @@
     if (D.cur) D.cur.subs.forEach(s => { if (CHANGED.includes(s.code)) { s.picks = s.ids.map(() => null); s.left = MOCK_SECONDS; s.done = false; s.started = false; } });
     D.bank = 2;
   }
-  Object.keys(D.sec).forEach(c => {   // older versions banked credits for harder levels: clear any above the level in progress
-    const L = ['e', 'a', 'c'], f = L.findIndex(l => !(D.sec[c][l] && D.sec[c][l].c >= NEED));
-    if (f >= 0) L.slice(f + 1).forEach(l => { if (D.sec[c][l]) D.sec[c][l].c = 0; });
-  });
+  if (D.rule !== 2) {   // new pass rule (8 of the last 10 right): everyone starts the levels again once; collections, tests, mistakes and stars stay
+    D.sec = {}; D.ask = {}; D.sess = { n: 0, ok: 0 }; D.rule = 2;
+  }
   if (!D.jer) D.jer = { owned: {} };
   if (!D.toon) D.toon = { owned: {}, hist: [] };
   ['cur', 'all'].forEach(p => {   // team spots: 3 lines + goalie (older saves had 6 spots)
@@ -80,12 +80,18 @@
   };
   PP.restoreData = function (r) { localStorage.setItem(KEY, JSON.stringify(r)); };
   PP.save = () => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) {} };
-  PP.resetLevels = () => { D.sec = {}; D.ask = {}; D.sess = { n: 0, ok: 0 }; PP.save(); };   // level counters only: collections, tests, mistakes stay
+  PP.resetLevels = () => { D.sec = {}; D.ask = {}; D.sess = { n: 0, ok: 0 }; D.rule = 2; PP.save(); };   // level counters only: collections, tests, mistakes stay
   PP.reset = () => { D = fresh(); PP.save(); };
 
-  const blank = () => ({ e: { c: 0, w: 0 }, a: { c: 0, w: 0 }, c: { c: 0, w: 0 } });
-  PP.S = code => D.sec[code] || (D.sec[code] = blank());
-  PP.passed = (code, lv) => PP.S(code)[lv].c >= NEED;
+  /* per level: c/w = answers counted so far (right/wrong), r = his last 10 counted answers (1 right, 0 wrong), p = 1 once passed */
+  const blank = () => ({ e: { c: 0, w: 0, r: [], p: 0 }, a: { c: 0, w: 0, r: [], p: 0 }, c: { c: 0, w: 0, r: [], p: 0 } });
+  PP.S = code => {
+    const s = D.sec[code] || (D.sec[code] = blank());
+    PP.LEVELS.forEach(l => { const x = s[l] || (s[l] = { c: 0, w: 0 }); if (!Array.isArray(x.r)) x.r = []; if (!x.p) x.p = 0; });
+    return s;
+  };
+  PP.passed = (code, lv) => PP.S(code)[lv].p === 1;
+  PP.recent = (code, lv) => { const r = PP.S(code)[lv].r; return { r, n: r.length, right: r.reduce((a, b) => a + b, 0) }; };
   PP.unlocked = (code, lv) => lv === 'e' || (lv === 'a' && PP.passed(code, 'e')) || (lv === 'c' && PP.passed(code, 'a'));
   PP.curLevel = code => PP.LEVELS.find(l => !PP.passed(code, l)) || 'c';
   PP.allDone = code => PP.LEVELS.every(l => PP.passed(code, l));
@@ -190,20 +196,30 @@
   PP.nextQ = (code, lv, opts) => PP.pickQ(code, lv, opts);
   /* staircase: a right answer moves the next question of this puzzle type one level harder,
      a wrong answer moves it one level easier (never below the level still being passed) */
-  PP.askLevel = function (code) {
-    const base = PP.LEVELS.indexOf(PP.curLevel(code)), a = D.ask[code];
+  PP.askLevel = function (code, smart) {
+    const base = PP.LEVELS.indexOf(PP.curLevel(code));
+    if (!smart) return PP.LEVELS[base];   // regular practice asks the level he is passing, so every answer counts
+    const a = D.ask[code];
     return PP.LEVELS[Math.max(base, a === undefined ? base : a)];
   };
-  /* Passing a level takes exactly 10 right answers while that level is the current one (harder questions
-     are still served by the staircase, but every right answer counts only for the level being passed, so one
-     answer can never pass a level that was already "banked"). Smart practice and mistake retries never count. */
+  /* Passing a level: his last 10 answers at that level must include at least 8 right (so wrong answers count, and a lucky
+     streak is not enough). Hint-2 answers, mistake retries and smart practice never count. Smart practice uses the staircase
+     (a right answer makes the next question harder, a wrong one easier); regular practice stays on the level being passed. */
   PP.answerPractice = function (q, pick, secs, smart, noLevel) {
     const ok = pick === q.ans, qi = PP.LEVELS.indexOf(q.lv);
     const before = PP.LEVELS.filter(l => PP.passed(q.sec, l));
-    if (!smart && !noLevel) { if (ok) PP.S(q.sec)[PP.curLevel(q.sec)].c++; else PP.S(q.sec)[q.lv].w++; }
-    D.ask[q.sec] = Math.max(0, Math.min(2, qi + (ok ? 1 : -1)));
+    if (!smart && !noLevel) {
+      const x = PP.S(q.sec)[PP.curLevel(q.sec)];
+      if (x.p === 1) { if (ok) x.c++; else x.w++; }   // every level already passed: keep practising, nothing to pass
+      else if (q.lv === PP.curLevel(q.sec)) {
+        if (ok) x.c++; else x.w++;
+        x.r.push(ok ? 1 : 0); if (x.r.length > WINDOW) x.r.shift();
+        if (x.r.length >= WINDOW && x.r.reduce((a, b) => a + b, 0) >= PASS_RIGHT) x.p = 1;
+      }
+    }
+    if (smart) D.ask[q.sec] = Math.max(0, Math.min(2, qi + (ok ? 1 : -1)));
     const newly = PP.LEVELS.filter(l => PP.passed(q.sec, l) && !before.includes(l));
-    if (newly.length) delete D.ask[q.sec];   // the next level starts from its own first question
+    if (newly.length) delete D.ask[q.sec];
     PP.record(q, ok, secs, 'p', pick);
     PP.addTime(Math.min(secs || 0, 120));
     const sessionDone = smart ? PP.sessionAdd(ok && !noLevel) : false;   // only smart practice counts toward a cartoon character

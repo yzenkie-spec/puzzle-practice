@@ -15,21 +15,29 @@ with sync_playwright() as p:
     pg.goto(URL); pg.wait_for_selector('h1')
     def ev(js, arg=None): return pg.evaluate(js, arg) if arg is not None else pg.evaluate(js)
 
-    # R1: every level takes exactly 10 right answers, with a random mix of right/wrong, in every section
-    r = ev("""()=>{ PP.reset(); const out=[]; const D=PP.D;
-      for (const s of PP.SECS){ let right=0, bad=null, passes=0;
-        for (let i=0;i<4000 && passes<3;i++){
-          const lv=PP.askLevel(s.code); const r=PP.nextQ(s.code, lv); if(!r.q) break;
-          const wantRight=Math.random()<0.75, q=r.q, pick=wantRight?q.ans:(q.ans+1)%q.opts.length;
-          const cur=PP.curLevel(s.code);
-          const res=PP.answerPractice(q,pick,5,false,false);
-          if(wantRight) right++;
-          if(res.levelPassed){ passes++; if(right!==10) bad=(bad||'')+s.code+' passed '+cur+' after '+right+' right; '; right=0; }
+    # R1: a level is passed when 8 of the last 10 counted answers are right (window full), in every section and level.
+    # An independent reference model decides when a pass is allowed; the app must agree on every single answer.
+    r = ev("""()=>{ PP.reset(); const bad=[];
+      const probs=[1,0.9,0.8,0.75,0.6,0.5];
+      for (const s of PP.SECS) for (const p of probs){
+        PP.resetLevels(); let win=[], passes=0, n=0;
+        while (passes<3 && n<400){
+          const lv=PP.askLevel(s.code,false), r=PP.nextQ(s.code,lv); if(!r.q) break;
+          const right=Math.random()<p, q=r.q, pick=right?q.ans:(q.ans+1)%q.opts.length;
+          const res=PP.answerPractice(q,pick,5,false,false); n++;
+          win.push(right?1:0); if(win.length>10) win.shift();
+          const expect = win.length>=10 && win.reduce((a,b)=>a+b,0)>=8;
+          if(res.levelPassed!==expect){ bad.push(s.code+' p='+p+' answer '+n+' expected pass='+expect+' got '+res.levelPassed+' window '+win.join('')); break; }
+          if(expect){ passes++; win=[]; }
         }
-        if(passes<3) bad=(bad||'')+s.code+' only passed '+passes+'; ';
-        out.push(bad);
-      } return out.filter(Boolean); }""")
-    check('R1 each level needs exactly 10 right answers (all 9 sections, random play)', r == [], r)
+      } return bad.slice(0,6); }""")
+    check('R1 pass = 8 of the last 10 right, matches the reference rule on every answer (all sections, 6 skill levels)', r == [], r)
+    r = ev("""()=>{ PP.resetLevels(); const out=[]; const pat='RRRRRRRWWW';   // exactly 7 of every 10: must never pass
+      const s='PF'; let n=0, passed=false;
+      for(let i=0;i<120;i++){ const r=PP.nextQ(s,PP.askLevel(s,false)); const right=pat[i%10]==='R';
+        const res=PP.answerPractice(r.q, right?r.q.ans:(r.q.ans+1)%r.q.opts.length,4,false,false); if(res.levelPassed) passed=true; }
+      return passed; }""")
+    check('R1b a steady 70% never passes a level, however long he practises', r is False, r)
 
     # R2: smart practice and hint/retry answers never move level counters
     r = ev("""()=>{ PP.reset(); const snap=()=>JSON.stringify(PP.D().sec); let bad=[];
@@ -100,11 +108,18 @@ with sync_playwright() as p:
     r2 = ev("()=>{ const d=JSON.parse(JSON.stringify(PP.D())); delete d.fan.teams; return JSON.stringify(d); }")
     check('R8 progress is identical after closing and reopening', json.loads(r) == json.loads(r2))
 
-    # R9: old saves with banked credits above the level in progress are cleaned at load
-    ev("""()=>{ const d=JSON.parse(localStorage.getItem('pp3')); d.sec.VA={e:{c:4,w:0},a:{c:9,w:0},c:{c:9,w:0}}; localStorage.setItem('pp3',JSON.stringify(d)); }""")
+    # R9: a save made under the old rule (10 right answers) is reset once; collections, tests and mistakes stay
+    ev("""()=>{ const d=JSON.parse(JSON.stringify(PP.D())); delete d.rule;
+      d.sec.VA={e:{c:10,w:0},a:{c:9,w:0},c:{c:9,w:0}}; d.toon.owned={t1:2}; d.jer.owned={'BOS|e':1}; d.fan.owned={cur1:1};
+      d.miss={'VA-e-1':{n:1,u:0,ts:1,pick:0}}; d.tests=[{id:1,date:'2026-10-10T00:00:00Z',subs:[]}]; d.stars=77;
+      localStorage.setItem('pp3',JSON.stringify(d)); }""")
     pg.reload(); pg.wait_for_selector('h1')
-    r = ev("()=>{ const s=PP.D().sec.VA; return [s.e.c,s.a.c,s.c.c]; }")
-    check('R9 banked credits above the current level are cleared on load', r == [4, 0, 0], r)
+    r = ev("""()=>{ const d=PP.D(); const allZero=PP.SECS.every(s=>PP.LEVELS.every(l=>{ const x=PP.S(s.code)[l]; return !x.c&&!x.w&&!x.r.length&&!x.p; })); const anyPassed=PP.SECS.some(s=>PP.LEVELS.some(l=>PP.passed(s.code,l)));
+      return { rule:d.rule, anyPassed, allZero, toon:d.toon.owned, jer:d.jer.owned, fan:d.fan.owned.cur1||0, miss:Object.keys(d.miss), tests:d.tests.length, stars:d.stars }; }""")
+    want = {'rule': 2, 'anyPassed': False, 'allZero': True, 'toon': {'t1': 2}, 'jer': {'BOS|e': 1}, 'fan': 1, 'miss': ['VA-e-1'], 'tests': 1, 'stars': 77}
+    check('R9 old-rule levels are reset once; collections, tests, mistakes and stars are kept', r == want, r)
+    ev("()=>{ PP.S('VA').e.p=1; PP.save(); }"); pg.reload(); pg.wait_for_selector('h1')
+    check('R9b the reset runs only once (a level passed afterwards stays passed)', ev("()=>PP.passed('VA','e')") is True)
 
     # R10: corrupt storage does not break the app
     ev("()=>localStorage.setItem('pp3','{not json')")
@@ -112,7 +127,7 @@ with sync_playwright() as p:
     check('R10 corrupt saved data: app still opens with a fresh start', ev("()=>Object.keys(PP.D().sec).length>=0"))
 
     # R11: a save from before question bank 2 keeps levels and scores, and retires old history only for the rebuilt parts
-    ev("""()=>{ const d=JSON.parse(JSON.stringify(PP.D())); delete d.bank;
+    ev("""()=>{ const d=JSON.parse(JSON.stringify(PP.D())); delete d.bank; d.rule=2;
       d.sec.FM={e:{c:10,w:2},a:{c:3,w:1},c:{c:0,w:0}};
       d.used={'FM-e-3':2,'VA-a-1':1,'NS-e-4':1}; d.miss={'FC-a-2':{n:1,u:0,ts:1,pick:0},'NP-e-5':{n:1,u:0,ts:1,pick:1}};
       d.tag={'FM|shape+fill':{n:3,c:1,s:0.5},'NS|add':{n:2,c:2,s:0.1}};

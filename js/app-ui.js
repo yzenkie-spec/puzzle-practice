@@ -84,7 +84,7 @@
       h += '<h2>' + ['📚', '🔢', '🔷'][bi] + ' ' + b + '</h2><div class="tiles">' + PP.SECS.filter(s => s.bat === bi).map(s => {
         const chips = PP.LEVELS.map(l => {
           const st = PP.S(s.code)[l];
-          const t = PP.passed(s.code, l) ? '✓' : PP.unlocked(s.code, l) ? st.c + '/' + PP.NEED : '🔒';
+          const rc = PP.recent(s.code, l), t = PP.passed(s.code, l) ? '✓' : PP.unlocked(s.code, l) ? (rc.n ? rc.right + '/' + rc.n : '–') : '🔒';
           return '<span class="lc ' + (PP.passed(s.code, l) ? 'done' : PP.unlocked(s.code, l) ? 'open' : 'lock') + '">' + LI[l] + ' ' + t + '</span>';
         }).join('');
         return '<button class="tile" data-a="sec" data-v="' + s.code + '"><b>' + s.icon + ' ' + s.name + '</b><span class="chips">' + chips + '</span></button>';
@@ -94,6 +94,8 @@
     set(h);
   }
 
+  const dots = r => r.map(v => (v ? '🟢' : '🔴')).join('') + '⚪'.repeat(Math.max(0, PP.WINDOW - r.length));
+
   /* ---------------- Section page ---------------- */
   function secView(code) {
     stop(); P = null;
@@ -102,8 +104,8 @@
     PP.LEVELS.forEach(l => {
       const st = PP.S(code)[l], done = PP.passed(code, l), open = PP.unlocked(code, l);
       h += '<div class="card lv"><div class="lvh"><b>' + lvName(l) + '</b><span class="' + (done ? 'good' : open ? '' : 'mute') + '">' + (done ? '✓ Passed' : open ? 'In progress' : '🔒 Pass ' + LN[PP.LEVELS[PP.LEVELS.indexOf(l) - 1]] + ' first') + '</span></div>' +
-        bar(open ? Math.min(100, st.c / PP.NEED * 100) : 0) +
-        '<small class="mute">' + (open ? Math.min(st.c, PP.NEED) + ' of ' + PP.NEED + ' correct to pass' + (st.c + st.w ? ' · ' + st.c + ' right, ' + st.w + ' wrong (' + pc(st.c, st.c + st.w) + '%)' : '') : 'Locked') + '</small></div>';
+        bar(open ? (done ? 100 : PP.recent(code, l).right / PP.WINDOW * 100) : 0) +
+        '<small class="mute">' + (open ? (done ? 'Passed: 8 of your last 10 were right' : 'Last 10 answers: ' + dots(PP.S(code)[l].r) + '<br>Pass with ' + PP.PASS_RIGHT + ' of your last ' + PP.WINDOW + ' right (hints do not count)') + (st.c + st.w ? '<br>' + st.c + ' right, ' + st.w + ' wrong so far (' + pc(st.c, st.c + st.w) + '%)' : '') : 'Locked') + '</small></div>';
     });
     h += '<button class="go" data-a="practice" data-v="' + code + '">' + (PP.allDone(code) ? 'Keep practicing: Challenging' : 'Practice: ' + lvName(cur)) + '</button>';
     set(h);
@@ -114,7 +116,7 @@
   function smart() { P = { mode: 'practice', code: null, smart: true, twin: null }; nextPractice(); }
   function nextPractice() {
     if (P.smart && !P.twin) P.code = PP.smartSection(P.code);
-    P.lv = P.fixLv || (P.twin && P.twinLv) || PP.askLevel(P.code);
+    P.lv = P.fixLv || (P.twin && P.twinLv) || PP.askLevel(P.code, P.smart);
     const r = PP.nextQ(P.code, P.lv, { tag: P.twin });
     P.isTwin = !!P.twin; P.twin = null;
     P.q = r.q; P.repeat = r.repeat; P.done = false; P.t0 = Date.now(); qView();
@@ -144,7 +146,7 @@
       const bl = PP.curLevel(q.sec), st = PP.S(q.sec)[bl];
       top = (P.smart ? '⚡ ' : '') + secIcon(q.sec) + ' ' + secName(q.sec) + ' · ' + lvName(q.lv); back = P.smart ? 'home' : 'sec';
       if (P.smart) { prog = Math.min(d.sess.n, PP.SESSION) / PP.SESSION * 100; txt = 'Smart session: question ' + Math.min(d.sess.n + 1, PP.SESSION) + ' of ' + PP.SESSION + ' (' + d.sess.ok + ' right so far)'; }
-      else { prog = st.c / PP.NEED * 100; txt = Math.min(st.c, PP.NEED) + ' of ' + PP.NEED + ' correct to pass ' + LN[bl] + (PP.passed(q.sec, bl) ? ' (all levels passed)' : ''); }
+      else { const rc = PP.recent(q.sec, bl); prog = rc.right / PP.WINDOW * 100; txt = PP.passed(q.sec, bl) ? 'All levels passed. Keep practising!' : 'Last 10: ' + dots(rc.r) + ' · pass ' + LN[bl] + ' with ' + PP.PASS_RIGHT + ' of 10 right'; }
     }
     const sess = (P.fromMiss || !P.smart ? '' : '<small class="mute">🏒 ' + Math.min(d.sess.n, PP.SESSION) + ' of ' + PP.SESSION + ' questions to a cartoon character (get 8 right)</small>');
     const harder = (P.mode === 'practice' && !P.isTwin && !P.fromMiss && PP.LEVELS.indexOf(q.lv) > PP.LEVELS.indexOf(PP.curLevel(q.sec))) ? '<div class="note">⬆️ Harder question! You got the last one right, so you moved up.</div>' : '';
@@ -402,7 +404,7 @@
     // sections
     const srows = PP.SECS.map(s => {
       const st = PP.secStats(s.code), passed = PP.LEVELS.filter(l => PP.passed(s.code, l)).length;
-      const cells = PP.LEVELS.map(l => { const x = PP.S(s.code)[l], done = PP.passed(s.code, l); return '<td class="' + (done ? 'good' : '') + '">' + (done ? '✓ ' : '') + Math.min(x.c, PP.NEED) + '/' + PP.NEED + '<small>' + (x.c + x.w ? pc(x.c, x.c + x.w) + '% right' : 'not started') + '</small></td>'; }).join('');
+      const cells = PP.LEVELS.map(l => { const x = PP.S(s.code)[l], done = PP.passed(s.code, l); return '<td class="' + (done ? 'good' : '') + '">' + (done ? '✓ ' : '') + (x.r.length ? x.r.reduce((a, b) => a + b, 0) + '/' + x.r.length : '–') + '<small>' + (x.c + x.w ? pc(x.c, x.c + x.w) + '% right' : 'not started') + '</small></td>'; }).join('');
       return '<tr><td><b>' + s.icon + ' ' + s.name + '</b><small>' + passed + ' of 3 levels passed</small></td><td>' + st.n + '<small>' + (st.n ? pc(st.ok, st.n) + '% right' : '–') + '</small></td><td>' + (st.recent === null ? '–' : Math.round(st.recent * 100) + '%') + '</td>' + cells + '</tr>';
     }).join('');
     const passedAll = PP.SECS.reduce((n, s) => n + PP.LEVELS.filter(l => PP.passed(s.code, l)).length, 0);

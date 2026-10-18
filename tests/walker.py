@@ -8,10 +8,11 @@ rnd = random.Random(SEED); errs = []; bad = []
 SKIP = {'reset', 'resetLevels', 'bkRestore', 'bkFile', 'bkCopy', 'parentCopy'}
 SNAP = """()=>{ const D=PP.D(); let passes=0, credit=0, bad=[];
   for(const s of PP.SECS){ const x=D.sec[s.code]; if(!x) continue;
-    if(x.e.c<10&&(x.a.c||x.c.c)) bad.push(s.code+' harder credit while easier open');
-    if(x.a.c<10&&x.c.c) bad.push(s.code+' challenging credit while average open');
-    if(x.e.c>10||x.a.c>10) bad.push(s.code+' counter over 10');
-    ['e','a','c'].forEach(l=>{ if(x[l].c>=10) passes++; credit+=Math.min(x[l].c,10); }); }
+    if(x.a.p&&!x.e.p) bad.push(s.code+' average passed before easy');
+    if(x.c.p&&!x.a.p) bad.push(s.code+' challenging passed before average');
+    if(x.a.r.length&&!x.e.p) bad.push(s.code+' average has answers while easy is open');
+    if(x.c.r.length&&!x.a.p) bad.push(s.code+' challenging has answers while average is open');
+    ['e','a','c'].forEach(l=>{ if(x[l].r.length>10) bad.push(s.code+l+' window over 10'); if(x[l].p) passes++; credit+=x[l].c+x[l].w; }); }
   return { passes, credit, used:Object.values(D.used).reduce((a,b)=>a+b,0), picks:D.fan.picks.length,
     toons:Object.values(D.toon.owned).reduce((a,b)=>a+b,0), jer:Object.values(D.jer.owned).reduce((a,b)=>a+b,0),
     tests:D.tests.length, cur:!!D.cur, sess:D.sess.n, bad }; }"""
@@ -19,7 +20,7 @@ with sync_playwright() as p:
     b = p.chromium.launch(); pg = b.new_context(viewport={'width': 820, 'height': 1180}).new_page()
     pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('dialog', lambda d: d.dismiss())
     pg.goto(URL); pg.wait_for_selector('h1')
-    pg.evaluate("()=>{ const D=PP.D(); PP.SECS.forEach(s=>{ PP.S(s.code).e.c=8; }); D.sess.n=6; D.sess.ok=6; PP.save(); }")
+    pg.evaluate("()=>{ const D=PP.D(); PP.SECS.forEach(s=>{ const e=PP.S(s.code).e; e.r=[1,1,1,1,1,1,1,1,1]; e.c=9; }); D.sess.n=6; D.sess.ok=6; PP.save(); }")
     pg.reload(); pg.wait_for_selector('h1'); prev = pg.evaluate(SNAP); log = []
     for step in range(STEPS):
         act = None
