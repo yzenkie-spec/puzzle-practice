@@ -25,6 +25,21 @@ with sync_playwright() as p:
     check('F1a smart session ends after exactly 10 questions', n == 10, n)
     check('F1b smart session with 9 of 10 right: one all-time legend pick, and one cartoon from the 6-in-a-row', ev("()=>JSON.stringify([PP.D().fan.picks.map(k=>k.pool), Object.values(PP.D().toon.owned).reduce((a,b)=>a+b,0)])") == '[["all"],1]')
     check('F1c smart practice left level counters untouched', ev("()=>JSON.stringify(PP.D().sec)") == sec0 or all(v['e']['c']+v['a']['c']+v['c']['c']==0 for v in ev("()=>PP.D().sec").values()))
+    # F5 back button: Home -> Fantasy -> Collection -> Player, then Back each step; a section page and a practice question go back to where they started
+    ev("()=>PP.reset()"); pg.reload(); pg.wait_for_selector('h1')
+    ev("()=>{const D=PP.D(); PP.NHL.cur.slice(0,3).forEach(p=>D.fan.owned[p.id]=1); PP.save(); PP.home();}")
+    check('F5a no Back button on the home page', pg.query_selector('[data-a=navBack]') is None)
+    pg.click('[data-a=fantasyHome]'); pg.click('[data-a=collection]')
+    pg.click('[data-a=player]')
+    check('F5b player page shows a Back button', pg.query_selector('[data-a=navBack]') is not None)
+    pg.click('[data-a=navBack]'); check('F5c Back from player returns to the collection', 'Player collection' in pg.inner_text('h1'))
+    pg.click('[data-a=navBack]'); check('F5d Back from collection returns to the fantasy page', 'fantasy' in pg.inner_text('h1').lower())
+    pg.click('[data-a=navBack]'); check('F5e Back from fantasy returns home', pg.query_selector('[data-a=smart]') is not None)
+    pg.click('[data-a=rules]'); pg.click('[data-a=navBack]'); check('F5f Back from rewards returns home', pg.query_selector('[data-a=smart]') is not None)
+    pg.click('[data-a=sec]'); first_sec = pg.inner_text('h1'); pg.click('[data-a=practice]')
+    pg.click('[data-a=navBack]') if pg.query_selector('[data-a=navBack]') else pg.click('.top button')
+    check('F5g leaving a practice question goes back to the section page', first_sec in pg.inner_text('h1'), pg.inner_text('h1'))
+
     # F2 mock test: answer everything correctly, finish -> exactly one draft pick, focus cleared
     pg.evaluate("()=>PP.home()")
     picks0 = ev("()=>PP.D().fan.picks.length")
