@@ -246,6 +246,18 @@ with sync_playwright() as p:
       return bad; }""")
     check('R18 start over clears levels and collections but keeps mistakes, tests and goals', r == [], r)
 
+    # R19: bench: collected players who are not in the lineup; swapping moves the old player to the bench
+    r = ev("""()=>{ PP.reset(); const D=PP.D(), bad=[]; const cs=PP.NHL.cur.filter(p=>p.pos==='C').slice(0,4);
+      cs.forEach(p=>D.fan.owned[p.id]=1); PP.fan.place('cur','C1',cs[0].id); PP.fan.place('cur','C2',cs[1].id);
+      let b=PP.fan.bench('cur').map(p=>p.id); if(b.length!==2||b.includes(cs[0].id)||b.includes(cs[1].id)) bad.push('bench wrong '+b);
+      if(PP.fan.bench('all').length) bad.push('other team bench not empty');
+      if(!PP.fan.place('cur','C1',cs[2].id)) bad.push('swap refused'); b=PP.fan.bench('cur').map(p=>p.id);
+      if(!b.includes(cs[0].id)||b.includes(cs[2].id)||b.length!==2) bad.push('old player not on bench '+b);
+      const w=PP.NHL.cur.find(p=>p.pos==='D'); D.fan.owned[w.id]=1; if(PP.fan.place('cur','C1',w.id)) bad.push('wrong position accepted');
+      PP.fan.clear('cur','C2'); if(!PP.fan.bench('cur').some(p=>p.id===cs[1].id)) bad.push('removed player not on bench');
+      return bad; }""")
+    check('R19 bench lists collected players outside the lineup and swaps work', r == [], r)
+
     check('no page errors during all checks', errs == [], errs[:3])
     b.close()
 print('\n%d failed' % len(fails) if fails else '\nALL PASS')

@@ -458,6 +458,11 @@
       return { slot };
     },
     /* put a collected player in a spot; if he is already in another spot the two players swap */
+    /* the bench: every player he has collected for this team who is not in a lineup spot, best position order first */
+    bench: pool => {
+      const ord = { C: 0, LW: 1, RW: 2, D: 3, G: 4 };
+      return PP.NHL[pool].filter(p => D.fan.owned[p.id] && !PP.fan.placedAt(pool, p.id)).sort((a, b) => (ord[a.pos] - ord[b.pos]) || (b.r - a.r));
+    },
     place(pool, slot, id) {
       const p = PP.NHL_BY_ID[id];
       if (!p || !D.fan.owned[id] || p.pool !== pool || PP.SLOT_POS[slot] !== p.pos) return false;

@@ -4,7 +4,7 @@
 (function () {
   const PP = window.PP, app = document.getElementById('app');
   const NAV = new Set(['home', 'sec', 'fantasyHome', 'fantasy', 'collection', 'player', 'jerseys', 'toons', 'sticks', 'rules', 'tracker', 'parent', 'review', 'reviewTest', 'mistakes', 'backup', 'games', 'draft', 'draftCur', 'draftAll']);
-  const STAY = new Set(['slotPick', 'slotSet', 'slotClear', 'slotClose', 'fanPool', 'colPool', 'colPos', 'toonShow', 'jerLv', 'gearSet', 'draftPool', 'missFilter', 'missSec', 'missPage', 'missOpen', 'missSet',
+  const STAY = new Set(['slotPick', 'benchPick', 'benchCancel', 'slotSet', 'slotClear', 'slotClose', 'fanPool', 'colPool', 'colPos', 'toonShow', 'jerLv', 'gearSet', 'draftPool', 'missFilter', 'missSec', 'missPage', 'missOpen', 'missSet',
     'pick', 'hint', 'next', 'bkCopy', 'bkFile', 'bkRestore', 'startOver', 'reset', 'resetLevels', 'parentCopy', 'shoot', 'memFlip', 'rq', 'navBack']);
   let hist = [{ a: 'home' }], onNav = true;
 

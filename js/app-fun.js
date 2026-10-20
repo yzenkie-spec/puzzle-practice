@@ -79,9 +79,12 @@
     return '<div class="pc t-' + t + (mini ? ' mini' : '') + '">' + jsvg + (st ? '<span class="gearstk">' + PP.stickSvg(st) + '</span>' : '') + (PP.fan.teamMatch(p.id) ? '<span class="match" title="Wearing his own team jersey">✨</span>' : '') + '<b>' + p.name + '</b><span class="pos">' + p.pos + '</span><span class="rt">' + p.r + '</span>' + (mini ? '' : '<small>' + PP.TIER_NAME[t] + '</small>') + '</div>';
   }
   let ed = null;   // lineup spot being edited
+  let bs = null;   // bench player picked up, waiting for a lineup spot
+  let bmsg = '';
   function lineup(pool) {
     const t = PP.fan.team(pool).slots;
-    const cell = s => '<div class="slot"><button class="slotbtn' + (ed === s ? ' sel' : '') + '" data-a="slotPick" data-v="' + s + '" aria-label="' + PP.slotName(s) + '">' +
+    const bp = bs ? PP.NHL_BY_ID[bs] : null;
+    const cell = s => '<div class="slot"><button class="slotbtn' + (ed === s ? ' sel' : '') + (bp && PP.SLOT_POS[s] === bp.pos ? ' tgt' : '') + '" data-a="slotPick" data-v="' + s + '" aria-label="' + PP.slotName(s) + '">' +
       (t[s] ? card(PP.NHL_BY_ID[t[s]], true) : '<div class="pc empty"><span>' + PP.SLOT_NAME[PP.SLOT_POS[s]] + '</span><small>tap to add</small></div>') + '</button></div>';
     let h = '<div class="lineup">';
     [1, 2, 3].forEach(n => { h += '<div class="lname">Line ' + n + '</div><div class="lrow">' + ['LW', 'C', 'RW'].map(x => cell(x + n)).join('') + '</div><div class="lrow">' + ['a', 'b'].map(x => cell('D' + n + x)).join('') + '</div>'; });
@@ -96,6 +99,13 @@
       (list.length ? '<div class="cgrid">' + cards + '</div>' : '<p class="sub">You have not collected a ' + PP.POS_NAME[pos].toLowerCase() + ' yet. Earn draft picks to collect more players!</p>') +
       (cur ? '<button class="ghost wide" data-a="slotClear">Take him out of this spot</button>' : '') + '</div>';
   }
+  function bench(pool) {
+    const list = PP.fan.bench(pool), bp = bs ? PP.NHL_BY_ID[bs] : null;
+    if (bp && (bp.pool !== pool || PP.fan.placedAt(pool, bp.id))) bs = null;
+    const cards = list.map(p => '<button class="pickc' + (bs === p.id ? ' sel' : '') + '" data-a="benchPick" data-v="' + p.id + '">' + card(p, true) + '<small class="' + (bs === p.id ? 'good' : 'mute') + '">' + (bs === p.id ? 'Picked: tap a spot' : 'Tap to move') + '</small></button>').join('');
+    const hint = bs ? '<div class="card main"><b>' + esc(PP.NHL_BY_ID[bs].name) + ' (' + PP.NHL_BY_ID[bs].pos + ')</b><p class="sub">Tap a highlighted ' + PP.POS_NAME[PP.NHL_BY_ID[bs].pos].toLowerCase() + ' spot in your lineup. The player there goes to the bench.</p>' + (bmsg ? '<p class="sub">' + bmsg + '</p>' : '') + '<button class="ghost wide" data-a="benchCancel">Cancel</button></div>' : '';
+    return '<h2>Bench (' + list.length + ')</h2>' + hint + (list.length ? (bs ? '' : '<p class="sub">Players you have collected who are not in your lineup. Tap one, then tap a spot in your lineup to swap him in.</p>') + '<div class="cgrid">' + cards + '</div>' : '<p class="sub">No players on the bench yet. Extra players you collect wait here.</p>');
+  }
   const poolTabs = act => '<div class="tabs">' + ['cur', 'all'].map(p => '<button class="tab' + (fs.pool === p ? ' on' : '') + '" data-a="' + act + '" data-v="' + p + '">' + PP.POOL_ICON[p] + ' ' + PP.POOL_NAME[p] + '</button>').join('') + '</div>';
 
   /* ---------------- fantasy team page ---------------- */
@@ -106,7 +116,7 @@
     const hist = d.fan.hist.slice(0, 6).map(h => { const p = PP.NHL_BY_ID[h.id], o = h.old ? PP.NHL_BY_ID[h.old] : null; return '<li>' + PP.POOL_ICON[h.pool] + ' <b>' + p.name + '</b> (' + p.r + ')' + (o ? ' replaced ' + o.name + ' (' + o.r + ')' : ' added to the collection') + '</li>'; }).join('');
     set('<div class="top"><button class="ghost" data-a="home">Home</button><span class="mute">🏆 Fantasy teams</span></div><h1>My fantasy teams</h1>' + poolTabs('fanPool') +
       '<div class="card"><label class="mute" for="tname">Team name</label><input id="tname" class="tname" maxlength="24" value="' + esc(tm.name) + '"><div class="lvh"><b>Team rating</b><span>' + (rt.n ? rt.avg : '–') + ' · ' + rt.n + ' of 16 spots filled</span></div>' + U.bar(rt.avg) + '<small class="mute">' + PP.POOL_ICON[other] + ' ' + esc(PP.fan.team(other).name) + ': ' + (ro.n ? ro.avg : '–') + ' (' + ro.n + ' of 16)</small></div>' +
-      '<h2>Lineup</h2><p class="sub">Tap a spot to choose any player you have collected. Pick a player who is already in another spot and the two swap places.</p>' + lineup(pool) + picker(pool) +
+      '<h2>Lineup</h2><p class="sub">Tap a spot to choose any player you have collected. Pick a player who is already in another spot and the two swap places.</p>' + lineup(pool) + picker(pool) + bench(pool) +
       '<button class="ghost wide" data-a="collection" style="margin-top:10px">📇 Player collection (' + Object.keys(d.fan.owned).length + ' collected)</button>' + (pk ? '<button class="go" data-a="draft">Draft a player (' + pk + ' pick' + (pk > 1 ? 's' : '') + ' ready)</button>' : '<div class="card main"><b>No draft picks yet</b><p class="sub">Pass a level in regular practice to earn a current-player pick. Get 9 of 10 right in a smart session to earn an all-time legend pick.</p></div>') +
       (hist ? '<h2>Recent picks</h2><div class="card"><ul class="weak">' + hist + '</ul></div>' : '') +
       '<p class="sub mute">Player ratings are made up for this game. Teams are as of the 2025-26 season.</p>');
@@ -364,8 +374,8 @@
 
   Object.assign(A, {
     player: v => { gs.id = v; player(v); }, gearSet, collection, colPool: v => { cv.pool = v; collection(); }, colPos: v => { cv.pos = v; collection(); },
-    fantasy, fantasyHome: () => { R = null; ed = null; fantasy(); }, draft, draftPick, fanPool: v => { fs.pool = v; ed = null; fantasy(); },
-    slotPick: v => { ed = ed === v ? null : v; fantasy(); const el = document.getElementById('picker'); if (el) el.scrollIntoView({ block: 'center' }); },
+    fantasy, fantasyHome: () => { R = null; ed = null; bs = null; fantasy(); }, benchPick: v => { bs = bs === v ? null : v; bmsg = ''; ed = null; fantasy(); const el = document.querySelector('.slotbtn.tgt'); if (bs && el) el.scrollIntoView({ block: 'center' }); }, benchCancel: () => { bs = null; bmsg = ''; fantasy(); }, draft, draftPick, fanPool: v => { fs.pool = v; ed = null; bs = null; fantasy(); },
+    slotPick: v => { if (bs) { if (PP.fan.place(fs.pool, v, bs)) { bs = null; bmsg = ''; } else bmsg = 'That spot is for a different position. Pick a highlighted spot.'; fantasy(); return; } ed = ed === v ? null : v; fantasy(); const el = document.getElementById('picker'); if (el) el.scrollIntoView({ block: 'center' }); },
     slotSet: id => { if (ed) PP.fan.place(fs.pool, ed, id); ed = null; fantasy(); },
     slotClear: () => { if (ed) PP.fan.clear(fs.pool, ed); ed = null; fantasy(); }, slotClose: () => { ed = null; fantasy(); }, draftPool: v => { fs.pool = v; draft(); },
     backup, bkCopy, bkFile, bkRestore, sessionDone, jerseys, jerLv: v => { jv.lv = v; jerseys(); }, toons, sticks, rules, draftCur: () => { fs.pool = 'cur'; draft(); }, draftAll: () => { fs.pool = 'all'; draft(); }, toonShow: v => { tv.show = v; toons(); }, rewards: v => rewardsFromMock(), cont, games, rewardsBack: () => (R ? rewards() : U.home()),
